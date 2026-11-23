@@ -229,4 +229,13 @@ Each `keys[].id` identifies the key for all its layers. Each `lighting` object c
 
 When you run `encode`, the JSON values for `binding`, `lighting.color`, and `lighting.mode` take precedence over the corresponding values in `source_binary`. For example, if the embedded binary assigns Y but the JSON specifies `00:03:68:00:00`, the output assigns Ctrl+Shift+F13.
 
-The embedded `source_binary` preserves the original data outside these fields, including scripts and color tables. Keep it intact. An unchanged text file encodes to a byte-identical binary.
+### Why `source_binary` varies in size
+
+`source_binary` holds the entire source binary in Base64. Keep it intact when editing the JSON. It preserves bytes outside the editable fields, including any scripts and color tables present in the source. An unchanged JSON file encodes to a byte-identical binary.
+
+| How the JSON was created | What `source_binary` contains | Example size (binary → Base64) |
+| --- | --- | --- |
+| `pull` from a 24-key device | Key bindings and RGB lighting records read by Osikiri | 3,040 bytes → 4,056 characters |
+| `decode` of an official `.sayobak` | The entire input file, including any additional data and padding | 281,965 bytes → 375,956 characters |
+
+Base64 adds about one third to the byte count and retains padding bytes. The size of a decoded file depends on its source.
