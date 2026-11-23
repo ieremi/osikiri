@@ -33,9 +33,11 @@ SAYOBAK_OPTIONS_SIZE = 34
 SAYOBAK_LAYER_SIZE = 8
 SAYOBAK_KEY_COMMAND = 0x10
 SAYOBAK_LIGHT_COMMAND = 0x11
-SAYOBAK_LIGHT_RGB_OFFSET = 20
-SAYOBAK_LIGHT_TRIGGER_OFFSET = 17
 SAYOBAK_LIGHT_EFFECT_OFFSET = 16
+LIGHT_EFFECT_MASK = 0x0f
+LIGHT_SPEED_MASK = 0xc0
+LIGHT_SPEED_CODES = {8: 0x00, 4: 0x40}
+LIGHT_FIELDS = {"effect", "color", "speed", "light_duration", "dark_duration", "trigger"}
 SAYOBAK_RECORD_SIZE = HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE
 V2_REPORT_ID = 0x21
 V2_HEADER = struct.Struct("<BBHHBB")
@@ -190,15 +192,6 @@ class SayoFile:
 
     def to_text(self):
         keys = [self.read_key(index) for index in range(KEY_COUNT)]
-        lights_by_layer = [
-            {
-                light["key"]: {
-                    "effect": light["effect"], "color": light["color"], "trigger": light["trigger"],
-                }
-                for light in self.lighting(self.lights, layer)
-            }
-            for layer in range(MAX_LAYERS)
-        ]
         config = {
             "format": "osikiri-1",
             "keys": [
@@ -207,7 +200,7 @@ class SayoFile:
                     "layers": [
                         {
                             "binding": binding(key, layer).hex(":").upper(),
-                            "lighting": lights_by_layer[layer].get(index),
+                            "lighting": self.read_light(index, layer) if index in self.lights else None,
                         }
                         for layer in range(MAX_LAYERS)
                     ],
@@ -239,17 +232,7 @@ class SayoFile:
                     payload[offset] = values[0]
                     payload[offset + 2:offset + LAYER_SIZE] = values[1:]
                     if index in settings.lights:
-                        light = entry["lighting"]
-                        if not isinstance(light, dict) or light.keys() != {"effect", "color", "trigger"}:
-                            raise ValueError(f"Expected lighting fields effect, color, and trigger for key ID {index}, layer {layer}.")
-                        trigger = light["trigger"]
-                        if type(trigger) is not int or not 0 <= trigger <= 255:
-                            raise ValueError(f"Invalid lighting trigger for key ID {index}, layer {layer}.")
-                        effect = light["effect"]
-                        if type(effect) is not int or not 0 <= effect <= 255:
-                            raise ValueError(f"Invalid lighting effect for key ID {index}, layer {layer}.")
-                        settings.lighting((index,), layer, parse_color(light["color"]),
-                                          trigger, effect=effect)
+                        settings.write_light(index, layer, entry["lighting"])
                     elif entry["lighting"] is not None:
                         raise ValueError(f"The source has no lighting record for key ID {index}.")
                 settings.write_key(index, payload)
@@ -289,28 +272,38 @@ class SayoFile:
                 slots = offsets[index] + (HEADER_SIZE if command == SAYOBAK_LIGHT_COMMAND else 0)
                 yield command, index, slots
 
-    def lighting(self, indices, layer, color=None, trigger=None, *, effect=None):
-        if any(index not in self.lights for index in indices):
-            raise ValueError("No lighting record for one or more selected keys.")
-        result = []
-        for index in indices:
-            payload = self.lights[index] + layer * SAYOBAK_LAYER_SIZE
-            rgb = payload + SAYOBAK_LIGHT_RGB_OFFSET
-            trigger_offset = payload + SAYOBAK_LIGHT_TRIGGER_OFFSET
-            effect_offset = payload + SAYOBAK_LIGHT_EFFECT_OFFSET
-            if color is not None:
-                self.data[rgb:rgb + 3] = color
-            if trigger is not None:
-                self.data[trigger_offset] = trigger
-            if effect is not None:
-                self.data[effect_offset] = effect
-            result.append({
-                "key": index,
-                "color": "#" + self.data[rgb:rgb + 3].hex(),
-                "trigger": self.data[trigger_offset],
-                "effect": self.data[effect_offset],
-            })
-        return result
+    def read_light(self, index, layer):
+        offset = self.lights[index] + SAYOBAK_LIGHT_EFFECT_OFFSET + layer * SAYOBAK_LAYER_SIZE
+        flags, trigger, light_duration, dark_duration = self.data[offset:offset + 4]
+        speed = next((value for value, code in LIGHT_SPEED_CODES.items()
+                      if code == flags & LIGHT_SPEED_MASK), None)
+        return {
+            "effect": flags & LIGHT_EFFECT_MASK,
+            "color": "#" + self.data[offset + 4:offset + 7].hex(),
+            "speed": speed,
+            "light_duration": light_duration,
+            "dark_duration": dark_duration,
+            "trigger": trigger,
+        }
+
+    def write_light(self, index, layer, light):
+        location = f"key ID {index}, layer {layer}"
+        if not isinstance(light, dict) or light.keys() != LIGHT_FIELDS:
+            raise ValueError(f"Expected lighting fields {', '.join(sorted(LIGHT_FIELDS))} for {location}.")
+        for field, maximum in (("effect", LIGHT_EFFECT_MASK), ("trigger", 255),
+                               ("light_duration", 255), ("dark_duration", 255)):
+            if type(light[field]) is not int or not 0 <= light[field] <= maximum:
+                raise ValueError(f"Invalid {field} for {location}. Expected an integer from 0 to {maximum}.")
+        speed = light["speed"]
+        if speed is not None and (type(speed) is not int or speed not in LIGHT_SPEED_CODES):
+            raise ValueError(f"Invalid speed for {location}. Expected 4, 8, or null to preserve the original.")
+        offset = self.lights[index] + SAYOBAK_LIGHT_EFFECT_OFFSET + layer * SAYOBAK_LAYER_SIZE
+        flags = (self.data[offset] & ~LIGHT_EFFECT_MASK) | light["effect"]
+        if speed is not None:
+            flags = (flags & ~LIGHT_SPEED_MASK) | LIGHT_SPEED_CODES[speed]
+        self.data[offset:offset + 7] = bytes((
+            flags, light["trigger"], light["light_duration"], light["dark_duration"],
+        )) + parse_color(light["color"])
 
 
 def pull_settings(args):

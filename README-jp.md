@@ -132,6 +132,21 @@ JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は 
 | `1` | キーを押している間だけ点灯 |
 | `2` | キーを離すと点灯（公式ツールでは **Release Light Up**） |
 
+Breathingを4xで使う場合の `lighting` の例です。
+
+```json
+{
+  "effect": 2,
+  "color": "#0000ff",
+  "speed": 4,
+  "light_duration": 37,
+  "dark_duration": 149,
+  "trigger": 2
+}
+```
+
+確認済みの速度は4xと8xで、`speed` に `4` または `8` を指定します。未確認の速度コードは `null` と表示され、エンコード時に元の速度を保持します。`light_duration` と `dark_duration` には、公式ツールと同じく `0`〜`255` の整数を指定します。
+
 ## 本体と設定ファイルを同期する
 
 ```sh
@@ -157,9 +172,9 @@ JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は 
 
 `encode` と `decode` の入力ファイルは直接指定するか、`--src` で指定できます。
 
-`keys[].id` が、そのキーの全レイヤーに共通するIDです。JSONは `lighting` の必須項目を `effect`、`color`、`trigger` の順で出力します。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。バイナリから現在の形式のJSONを生成するには `decode` を使います。
+`keys[].id` が、そのキーの全レイヤーに共通するIDです。JSONは `lighting` の必須項目を `effect`、`color`、`speed`、`light_duration`、`dark_duration`、`trigger` の順で出力します。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。バイナリから現在の形式のJSONを生成するには `decode` を使います。
 
-`encode` では、JSONの `binding`、`lighting.color`、`lighting.trigger`、`lighting.effect` が、`source_binary` 内の対応する値より優先されます。たとえば、埋め込みのバイナリでYが割り当てられていても、JSONで `00:03:68:00:00` を指定すると、出力ではCtrl+Shift+F13になります。
+`encode` では、JSONの `binding` と `lighting` の編集項目が、`source_binary` 内の対応する値より優先されます。たとえば、埋め込みのバイナリでYが割り当てられていても、JSONで `00:03:68:00:00` を指定すると、出力ではCtrl+Shift+F13になります。
 
 ### 公式形式のファイルを書き出す
 

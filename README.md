@@ -132,6 +132,21 @@ The JSON field `lighting.trigger` is the lighting trigger. Set the Light Mode co
 | `1` | While the key is pressed |
 | `2` | On release (shown as **Release Light Up** in the official configurator) |
 
+Example `lighting` object for Breathing at 4x:
+
+```json
+{
+  "effect": 2,
+  "color": "#0000ff",
+  "speed": 4,
+  "light_duration": 37,
+  "dark_duration": 149,
+  "trigger": 2
+}
+```
+
+Set `speed` to `4` or `8` for the verified 4x and 8x settings. An unrecognized speed code is shown as `null`, which keeps the original speed during encoding. `light_duration` and `dark_duration` accept integers from `0` to `255`, as displayed in the official configurator.
+
 ## Synchronize the device and configuration files
 
 ```sh
@@ -157,9 +172,9 @@ Whenever a command writes a binary `.sayobak` file, it also writes a same-name `
 
 Pass the source file directly to `encode` or `decode`, or specify it with `--src`.
 
-Each `keys[].id` identifies the key for all its layers. The JSON lists the required `lighting` fields in this order: `effect`, `color`, `trigger`. Edit `keys[].layers[].binding` in `MODE:P0:P1:P2:P3` hexadecimal format. To get the current JSON format from a binary file, use `decode`.
+Each `keys[].id` identifies the key for all its layers. The JSON lists the required `lighting` fields in this order: `effect`, `color`, `speed`, `light_duration`, `dark_duration`, `trigger`. Edit `keys[].layers[].binding` in `MODE:P0:P1:P2:P3` hexadecimal format. To get the current JSON format from a binary file, use `decode`.
 
-When you run `encode`, the JSON values for `binding`, `lighting.color`, `lighting.trigger`, and `lighting.effect` take precedence over the corresponding values in `source_binary`. For example, if the embedded binary assigns Y but the JSON specifies `00:03:68:00:00`, the output assigns Ctrl+Shift+F13.
+When you run `encode`, the JSON values for `binding` and the editable `lighting` fields take precedence over the corresponding values in `source_binary`. For example, if the embedded binary assigns Y but the JSON specifies `00:03:68:00:00`, the output assigns Ctrl+Shift+F13.
 
 ### Write files in the official format
 
