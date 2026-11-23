@@ -34,7 +34,8 @@ SAYOBAK_LAYER_SIZE = 8
 SAYOBAK_KEY_COMMAND = 0x10
 SAYOBAK_LIGHT_COMMAND = 0x11
 SAYOBAK_LIGHT_RGB_OFFSET = 20
-SAYOBAK_LIGHT_MODE_OFFSET = 17
+SAYOBAK_LIGHT_TRIGGER_OFFSET = 17
+SAYOBAK_LIGHT_EFFECT_OFFSET = 16
 SAYOBAK_RECORD_SIZE = HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE
 V2_REPORT_ID = 0x21
 V2_HEADER = struct.Struct("<BBHHBB")
@@ -191,7 +192,9 @@ class SayoFile:
         keys = [self.read_key(index) for index in range(KEY_COUNT)]
         lights_by_layer = [
             {
-                light["key"]: {"color": light["color"], "mode": light["mode"]}
+                light["key"]: {
+                    "effect": light["effect"], "color": light["color"], "trigger": light["trigger"],
+                }
                 for light in self.lighting(self.lights, layer)
             }
             for layer in range(MAX_LAYERS)
@@ -237,9 +240,16 @@ class SayoFile:
                     payload[offset + 2:offset + LAYER_SIZE] = values[1:]
                     if index in settings.lights:
                         light = entry["lighting"]
-                        if type(light["mode"]) is not int or not 0 <= light["mode"] <= 255:
+                        if not isinstance(light, dict) or light.keys() != {"effect", "color", "trigger"}:
+                            raise ValueError(f"Expected lighting fields effect, color, and trigger for key ID {index}, layer {layer}.")
+                        trigger = light["trigger"]
+                        if type(trigger) is not int or not 0 <= trigger <= 255:
                             raise ValueError(f"Invalid lighting trigger for key ID {index}, layer {layer}.")
-                        settings.lighting((index,), layer, parse_color(light["color"]), light["mode"])
+                        effect = light["effect"]
+                        if type(effect) is not int or not 0 <= effect <= 255:
+                            raise ValueError(f"Invalid lighting effect for key ID {index}, layer {layer}.")
+                        settings.lighting((index,), layer, parse_color(light["color"]),
+                                          trigger, effect=effect)
                     elif entry["lighting"] is not None:
                         raise ValueError(f"The source has no lighting record for key ID {index}.")
                 settings.write_key(index, payload)
@@ -279,22 +289,26 @@ class SayoFile:
                 slots = offsets[index] + (HEADER_SIZE if command == SAYOBAK_LIGHT_COMMAND else 0)
                 yield command, index, slots
 
-    def lighting(self, indices, layer, color=None, mode=None):
+    def lighting(self, indices, layer, color=None, trigger=None, *, effect=None):
         if any(index not in self.lights for index in indices):
             raise ValueError("No lighting record for one or more selected keys.")
         result = []
         for index in indices:
             payload = self.lights[index] + layer * SAYOBAK_LAYER_SIZE
             rgb = payload + SAYOBAK_LIGHT_RGB_OFFSET
-            mode_offset = payload + SAYOBAK_LIGHT_MODE_OFFSET
+            trigger_offset = payload + SAYOBAK_LIGHT_TRIGGER_OFFSET
+            effect_offset = payload + SAYOBAK_LIGHT_EFFECT_OFFSET
             if color is not None:
                 self.data[rgb:rgb + 3] = color
-            if mode is not None:
-                self.data[mode_offset] = mode
+            if trigger is not None:
+                self.data[trigger_offset] = trigger
+            if effect is not None:
+                self.data[effect_offset] = effect
             result.append({
                 "key": index,
                 "color": "#" + self.data[rgb:rgb + 3].hex(),
-                "mode": self.data[mode_offset],
+                "trigger": self.data[trigger_offset],
+                "effect": self.data[effect_offset],
             })
         return result
 

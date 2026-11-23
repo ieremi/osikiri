@@ -38,7 +38,7 @@ Linuxの `hidraw` を使います。対象の `/dev/hidrawN` への読み書き�
 
 ## キー割り当てと照明を確認する
 
-`pull` または `decode` が生成したJSONを開きます。キーID 0〜23とFnレイヤー0〜4は公式ツールの番号と同じです。`binding` にキー割り当て、`lighting` にRGB色と点灯トリガーが入ります。
+`pull` または `decode` が生成したJSONを開きます。キーID 0〜23とFnレイヤー0〜4は公式ツールの番号と同じです。`binding` にキー割り当て、`lighting` にRGB色、点灯トリガー、点灯効果の番号が入ります。
 
 ### 物理キーの配置（Left）
 
@@ -108,13 +108,13 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 
 ### Light Modeと点灯トリガーの値
 
-公式ツールの **Light Mode** は点灯効果を選ぶ項目です。下表に各効果と、確認できたファイル上の番号を示します。採取されたStaticのレポートでは効果の番号は `0` です。ほかの効果の番号は未確認です。 [公式の照明設定ガイド](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [採取されたStaticのレポート](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
+公式ツールの **Light Mode** は点灯効果を選ぶ項目です。下表に各効果と、確認できたファイル上の番号を示します。Staticの効果番号は `0` です。効果番号 `2` のファイルを読み込むと、公式ツールにBreathingと表示されました。残りの番号は未確認です。 [公式の照明設定ガイド](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [採取されたStaticのレポート](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
 
 | Light Mode | ファイル上の番号 | 効果 |
 | --- | --- | --- |
 | Static | `0` | 明るさが一定で、点灯はトリガーに従う |
 | Indicator | 未確認 | Num Lock、Caps Lock、Scroll Lockの状態を表示する |
-| Breathing | 未確認 | 明るくなったり暗くなったりを繰り返す |
+| Breathing | `2` | 明るくなったり暗くなったりを繰り返す |
 | Breathing Once | 未確認 | トリガーで明暗の変化を1周期実行する |
 | Wave | 未確認 | 固定色以外のカラーモードで色を動かす |
 | Switch | 未確認 | 設定した間隔で色を順番に切り替える |
@@ -124,12 +124,13 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 | Fade out | 未確認 | トリガーで徐々に消灯する |
 | Fade in | 未確認 | トリガーで徐々に点灯する |
 
-JSONの `lighting.mode` は点灯トリガーです。RGB色は `lighting.color` に `"#00BFFF"` のように指定します。
+JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は `lighting.effect` に指定します。たとえばStaticは `0`、Breathingは `2` です。RGB色は `lighting.color` に `"#00BFFF"` のように指定します。
 
 | トリガー値 | Staticでの点灯条件 |
 | --- | --- |
 | `0` | 常時点灯 |
 | `1` | キーを押している間だけ点灯 |
+| `2` | キーを離すと点灯（公式ツールでは **Release Light Up**） |
 
 ## 本体と設定ファイルを同期する
 
@@ -156,9 +157,9 @@ JSONの `lighting.mode` は点灯トリガーです。RGB色は `lighting.color`
 
 `encode` と `decode` の入力ファイルは直接指定するか、`--src` で指定できます。
 
-`keys[].id` が、そのキーの全レイヤーに共通するIDです。`lighting` オブジェクトには `color` と `mode` が入ります。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。RGBと点灯トリガーは `lighting.color` と `lighting.mode` で指定します。
+`keys[].id` が、そのキーの全レイヤーに共通するIDです。JSONは `lighting` の必須項目を `effect`、`color`、`trigger` の順で出力します。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。バイナリから現在の形式のJSONを生成するには `decode` を使います。
 
-`encode` では、JSONの `binding`、`lighting.color`、`lighting.mode` が、`source_binary` 内の対応する値より優先されます。たとえば、埋め込みのバイナリでYが割り当てられていても、JSONで `00:03:68:00:00` を指定すると、出力ではCtrl+Shift+F13になります。
+`encode` では、JSONの `binding`、`lighting.color`、`lighting.trigger`、`lighting.effect` が、`source_binary` 内の対応する値より優先されます。たとえば、埋め込みのバイナリでYが割り当てられていても、JSONで `00:03:68:00:00` を指定すると、出力ではCtrl+Shift+F13になります。
 
 ### 公式形式のファイルを書き出す
 
