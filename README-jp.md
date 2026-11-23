@@ -108,7 +108,7 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 
 ### Light Modeと点灯トリガーの値
 
-公式ツールの **Light Mode** は点灯効果を選ぶ項目です。下表に各効果と、確認できたファイル上の番号を示します。Staticの効果番号は `0` です。公式ツールでは効果番号 `1` がIndicator、`2` がBreathingと表示されました。残りの番号は未確認です。 [公式の照明設定ガイド](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [採取されたStaticのレポート](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
+公式ツールの **Light Mode** は点灯効果を選ぶ項目です。下表に各効果と、確認できたファイル上の番号を示します。Staticの効果番号は `0` です。公式ツールでは効果番号 `1` がIndicator、`2` がBreathingと表示されました。表の「未確認」は番号を特定できていない効果です。 [公式の照明設定ガイド](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [採取されたStaticのレポート](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
 
 | Light Mode | ファイル上の番号 | 効果 |
 | --- | --- | --- |
@@ -122,7 +122,9 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 | Blink | 未確認 | 設定した点灯・消灯間隔で点滅する |
 | Blink Once | 未確認 | トリガーで点滅する |
 | Fade out | 未確認 | トリガーで徐々に消灯する |
-| Fade in | 未確認 | トリガーで徐々に点灯する |
+| Fade In | `15` | トリガーで徐々に点灯する |
+
+Leftでは、公式ツールの **Fade In**、**4x**、**Press Light Up** が、それぞれ `effect: 15`、`speed: 4`、`trigger: 1` に対応しました。
 
 JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は `lighting.effect` に指定します。たとえばStaticは `0`、Indicatorは `1`、Breathingは `2` です。RGB色は `lighting.color` に `"#00BFFF"` のように指定します。
 

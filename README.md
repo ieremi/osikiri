@@ -108,7 +108,7 @@ On the Left unit, `Key ID 4` on Fn 0 has the binding `80:02:00:00:00`, which set
 
 ### Light Mode and trigger values
 
-In the official configurator, **Light Mode** selects the lighting effect. The table lists the available effects and the known file codes. Static uses effect code `0`. The official configurator displayed Indicator for effect code `1` and Breathing for `2`. The remaining codes are unverified. [Official lighting guide](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [Captured Static report](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
+In the official configurator, **Light Mode** selects the lighting effect. The table lists the available effects and the known file codes. Static uses effect code `0`. The official configurator displayed Indicator for effect code `1` and Breathing for `2`. Codes marked Unverified have yet to be confirmed. [Official lighting guide](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [Captured Static report](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
 
 | Light Mode | File code | Effect |
 | --- | --- | --- |
@@ -122,7 +122,9 @@ In the official configurator, **Light Mode** selects the lighting effect. The ta
 | Blink | Unverified | Flashes at set on/off intervals |
 | Blink Once | Unverified | Flashes on a trigger |
 | Fade out | Unverified | Gradually turns off on a trigger |
-| Fade in | Unverified | Gradually turns on on a trigger |
+| Fade In | `15` | Gradually turns on on a trigger |
+
+On the Left unit, the official configurator showed **Fade In**, **4x**, and **Press Light Up** for `effect: 15`, `speed: 4`, and `trigger: 1`.
 
 The JSON field `lighting.trigger` is the lighting trigger. Set the Light Mode code in `lighting.effect`, for example `0` for Static, `1` for Indicator, or `2` for Breathing. Set the RGB color in `lighting.color`, for example `"#00BFFF"`.
 
