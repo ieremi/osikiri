@@ -6,9 +6,18 @@
 
 Osikiriという名前は、地名の「押切」と、キーを「押す」ことにちなんでいます。
 
+## 設定を変換・転送するコマンド
+
+| データの流れ | コマンド |
+| --- | --- |
+| 本体 → ファイル | `pull` |
+| バイナリファイル → 本体 | `push` |
+| テキスト → バイナリ | `encode` |
+| バイナリ → テキスト | `decode` |
+
 ## コマンドのヘルプ
 
-`--help` でコマンド一覧を表示できます。各コマンドのオプションを確認するには、コマンド名の後に `--help` を付けます。
+サブコマンドを先に書き、その後にオプションを指定します。`--help` でコマンド一覧を表示できます。各コマンドのオプションを確認するには、コマンド名の後に `--help` を付けます。
 
 ```sh
 python3 sayo24.py --help
@@ -22,24 +31,43 @@ USB接続にはLinuxの `hidraw` と旧HID設定プロトコル（Report ID `0x0
 
 ```sh
 python3 sayo24.py list
-python3 sayo24.py --device /dev/hidrawN read
+python3 sayo24.py read --device /dev/hidrawN
 ```
 
 `list` が表示したデバイスパスを指定します。旧設定インターフェースが1つなら `--device` を省略できます。`8089:0008` のLeftとRightは、それぞれのパスで選択します。再接続するとデバイス番号が変わることがあります。
 
 `read` は本体のキー番号順に24キーを表示します。キー番号と物理位置の対応は機種やファームウェアに依存します。
 
+### JSON出力の読み方（USB接続）
+
+出力は、キーごとのオブジェクトを並べたJSON配列です。配列内の1件を例に示します。
+
+```json
+{
+  "key": 6,
+  "layers": [
+    [0, 3, 104, 0, 0],
+    [0, 0, 28, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0]
+  ]
+}
+```
+
+`key` は本体のキー番号です。`layers` はFn 0から順に並ぶため、`layers[0]` がFn 0です。各要素には `[MODE, P0, P1, P2, P3]` が10進数で入ります。この例ではFn 0がCtrl+Shift+F13、Fn 1がYです。10進数の `104` と `28` は、`show` の表では16進数の `68` と `1C` に当たります。
+
 ## キー割り当てを変更する
 
 ```sh
 # キーID 1のFn 0の割り当てをキーID 0へコピー
-python3 sayo24.py --device /dev/hidrawN set 0 --copy-from 1 --layer 0
+python3 sayo24.py set --device /dev/hidrawN 0 --copy-from 1 --layer 0
 
 # キーID 6のショートカットをプレビュー
-python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --dry-run
+python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --dry-run
 
 # ショートカットを適用して本体に保存
-python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --save
+python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
 ```
 
 `--shortcut` では英数字、F1〜F24、矢印キー、Enterなどの一般的なキーを指定できます。修飾キーにはCtrl、Shift、Alt、Gui（Windows / Command）を使います。右側の修飾キーには `RCtrl` のように `R` を付けます。
@@ -58,7 +86,7 @@ python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --save
 ## キー割り当てと照明を確認する
 
 ```sh
-python3 sayo24.py --src original.sayobak show
+python3 sayo24.py show --src original.sayobak
 ```
 
 公式ツールと同じキーID 0〜23、Fnレイヤー0〜4を表で表示します。CLIの引数とJSONのキーIDも同じ番号を使います。旧バージョンの引数を使う場合は、キー番号とレイヤー番号から1を引いてください。各行にはキー番号、割り当て（モードと4個のパラメーターを16進数で表示）、RGB色、点灯トリガーの数値が含まれます。公式ツールの Light Mode には Static や Breathing などの点灯効果があります。このCLIはトリガー値を表示し、常時点灯と押下時点灯の設定に対応します。
@@ -132,37 +160,17 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 ## .sayobak 設定ファイルを編集する
 
 ```sh
-python3 sayo24.py --src original.sayobak read
-python3 sayo24.py --src original.sayobak set 6 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
+python3 sayo24.py set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest out
 ```
 
-形式バージョン1.0の .sayobak サンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
-
-### JSON出力の読み方
-
-出力は、キーごとのオブジェクトを並べたJSON配列です。配列内の1件を例に示します。
-
-```json
-{
-  "key": 6,
-  "layers": [
-    [0, 3, 104, 0, 0],
-    [0, 0, 28, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0]
-  ]
-}
-```
-
-`key` は本体のキー番号です。`layers` はFn 0から順に並ぶため、`layers[0]` がFn 0です。各要素には `[MODE, P0, P1, P2, P3]` が10進数で入ります。この例ではFn 0がCtrl+Shift+F13、Fn 1がYです。10進数の `104` と `28` は、`show` の表では16進数の `68` と `1C` に当たります。
+形式バージョン1.0の .sayobak サンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。`--dest` で出力先ディレクトリを指定できます。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
 
 ## 設定ファイルのRGB照明を設定する
 
 ```sh
-python3 sayo24.py --src original.sayobak read-light --layer 1
-python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dry-run
-python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dest edited.sayobak
+python3 sayo24.py read-light --src original.sayobak --layer 1
+python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dry-run
+python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dest out
 ```
 
 キーIDは0〜23で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドは設定ファイルをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
@@ -193,3 +201,30 @@ python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --
 | --- | --- | --- |
 | `0` | `--mode static` | 常時点灯 |
 | `1` | `--mode held` | キーを押している間だけ点灯 |
+
+## 本体と設定ファイルを同期する
+
+```sh
+python3 sayo24.py pull
+python3 sayo24.py pull /dev/hidrawN
+python3 sayo24.py pull --device /dev/hidrawN --dest out
+python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --dry-run
+python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --apply --save
+```
+
+`pull` は、HID Report ID `0x21` で全24キー・5つのFnレイヤーのキー割り当てとRGB照明を読み取ります。入力は本体だけです。 本体のパスを省略すると、接続中の対応機器をすべて読み取ります。HIDのパスを直接指定するか `--device` で指定すると、その1台だけを読み取ります。ファイルを出力する前に本体名とパスを表示します。 本体から別のHIDレポートが届いた場合は、要求したレコードと一致する応答を待ちます。生成する `.sayobak` には、Osikiriが読み取ったキー割り当てと照明のレコードだけが入ります。スクリプトやカラーテーブルは出力対象外です。このファイルの公式ツールでの取り込みは未確認です。`push` はバイナリファイルのキー割り当てと照明だけを適用し、変更したレコードを読み戻して確認します。`--save` を指定すると、成功した変更を本体の不揮発メモリーに保存します。途中で書き込みに失敗した場合、すでに書き込んだレコードが本体の動作中の設定に反映されることがあります。
+
+バイナリの `.sayobak` を書き出すコマンドは、編集可能なJSONを入れた同名の `.json` も出力します。ファイル名はローカル時刻の24時間制で `yyyy-MM-dd-hh-mm-ss.json` と `yyyy-MM-dd-hh-mm-ss.sayobak` になります。ペアには同じ日時を使います。 `pull` では、空白やファイル名の区切り文字をハイフンに置き換えた本体名を日時の前に付けます。例は `SayoDevice-Left-2026-11-23-12-00-00.sayobak` です。同名ファイルがある場合は、空いている名前が見つかるまで日時を1秒ずつ進めます。`--dest` は出力先ディレクトリを指定し、省略時は `out/` です。必要に応じてディレクトリを作成し、生成したパスを表示します。後続のコマンドではそのパスを使ってください。
+
+## テキストとバイナリを相互変換する
+
+```sh
+python3 sayo24.py decode --src original.sayobak --dest out
+python3 sayo24.py encode --src out/2026-11-23-12-00-00.json --dest out
+```
+
+`keys[].id` が、そのキーの全レイヤーに共通するIDです。`lighting` オブジェクトには `color` と `mode` が入ります。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。RGBと点灯トリガーは `lighting.color` と `lighting.mode` で指定します。
+
+`encode` では、JSONの `binding`、`lighting.color`、`lighting.mode` が、`source_binary` 内の対応する値より優先されます。たとえば、埋め込みのバイナリでYが割り当てられていても、JSONで `00:03:68:00:00` を指定すると、出力ではCtrl+Shift+F13になります。
+
+埋め込みの `source_binary` はスクリプトやカラーテーブルなど、これらの項目以外の元データを保持するので、そのまま残してください。テキストを変更せずに変換すると、元とバイト単位で同じバイナリになります。

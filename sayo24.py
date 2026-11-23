@@ -2,6 +2,8 @@
 """Inspect and edit 24-key SayoDevice bindings over HID or in a .sayobak configuration file."""
 
 import argparse
+import base64
+import binascii
 import fcntl
 import json
 import os
@@ -13,6 +15,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager, nullcontext
+from datetime import datetime, timedelta
 
 KEY_COUNT = 24
 REPORT_SIZE = 64
@@ -22,6 +25,7 @@ HEADER_SIZE = 16
 LAYER_SIZE = 6
 MAX_LAYERS = 5
 SYSFS = Path("/sys/class/hidraw")
+OUTPUT_DIR = Path("out")
 SAYOBAK_MAGIC = b"Sayo Device Backup File 1.0".ljust(64, b"\0")
 SAYOBAK_RECORD_START = 0x69
 SAYOBAK_RECORD = struct.Struct("<BBI")
@@ -30,6 +34,10 @@ SAYOBAK_KEY_COMMAND = 0x10
 SAYOBAK_LIGHT_COMMAND = 0x11
 SAYOBAK_LIGHT_RGB_OFFSET = 20
 SAYOBAK_LIGHT_MODE_OFFSET = 17
+SAYOBAK_RECORD_SIZE = HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE
+V2_REPORT_ID = 0x21
+V2_HEADER = struct.Struct("<BBHHBB")
+V2_WORDS = struct.Struct("<32H")
 KEY_CODES = {
     **{chr(65 + i): 4 + i for i in range(26)},
     **{key: 30 + i for i, key in enumerate("1234567890")},
@@ -58,6 +66,41 @@ def devices():
             yield Path("/dev") / entry.name, product, info.get("HID_NAME", ""), descriptor
 
 
+def write_output(directory, document, binary=None, *, prefix=""):
+    directory.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().replace(microsecond=0)
+    with tempfile.TemporaryDirectory(dir=directory) as staging:
+        text = Path(staging) / "settings.json"
+        text.write_text(document, encoding="utf-8")
+        if binary is not None:
+            data = Path(staging) / "settings.sayobak"
+            data.write_bytes(binary)
+        while True:
+            stem = prefix + timestamp.strftime("%Y-%m-%d-%H-%M-%S")
+            text_path = directory / f"{stem}.json"
+            binary_path = directory / f"{stem}.sayobak"
+            try:
+                os.link(text, text_path)
+            except FileExistsError:
+                timestamp += timedelta(seconds=1)
+                continue
+            try:
+                if binary is not None:
+                    os.link(data, binary_path)
+                elif binary_path.exists():
+                    raise FileExistsError(binary_path)
+            except OSError as exc:
+                text_path.unlink()
+                if isinstance(exc, FileExistsError):
+                    timestamp += timedelta(seconds=1)
+                    continue
+                raise
+            break
+    if binary is not None:
+        print(f"Wrote {binary_path}", file=sys.stderr)
+    print(f"Wrote {text_path}", file=sys.stderr)
+
+
 def packet(command, payload):
     prefix = bytes((REPORT_ID, command, len(payload))) + payload
     return (prefix + bytes((sum(prefix) & 0xff,))).ljust(REPORT_SIZE, b"\0")
@@ -67,19 +110,29 @@ class Device:
     def __init__(self, fd):
         self.fd = fd
 
-    def exchange(self, command, payload, timeout=1):
-        frame = packet(command, payload)
+    def report(self, frame, report_id, timeout, record_id=None):
         if os.write(self.fd, frame) != len(frame):
             raise ValueError("Could not send the complete HID report.")
         deadline = time.monotonic() + timeout
-        while select.select([self.fd], [], [], max(0, deadline - time.monotonic()))[0]:
-            reply = os.read(self.fd, REPORT_SIZE)
-            if not reply or reply[0] == REPORT_ID:
+        while time.monotonic() < deadline:
+            if not select.select([self.fd], [], [], max(0, deadline - time.monotonic()))[0]:
                 break
-            if time.monotonic() >= deadline:
-                raise ValueError(f"No response to command 0x{command:02x}.")
-        else:
-            raise ValueError(f"No response to command 0x{command:02x}.")
+            reply = os.read(self.fd, REPORT_SIZE)
+            if not reply:
+                raise ValueError("The HID device stopped responding.")
+            if reply[0] != report_id:
+                continue
+            if len(reply) != REPORT_SIZE:
+                raise ValueError("Unexpected HID response format.")
+            if record_id is None or V2_HEADER.unpack_from(reply)[-2:] == record_id:
+                return reply
+        if record_id is not None:
+            command, index = record_id
+            raise ValueError(f"No matching response for record 0x{command:02x}, key ID {index}.")
+        raise ValueError("No response to the HID request.")
+
+    def exchange(self, command, payload, timeout=1):
+        reply = self.report(packet(command, payload), REPORT_ID, timeout)
         if len(reply) != REPORT_SIZE or reply[2] > 60:
             raise ValueError("Unexpected HID response format.")
         if reply[1]:
@@ -102,17 +155,34 @@ class Device:
     def save(self):
         self.exchange(4, bytes.fromhex("72 96"), timeout=2)
 
+    def record(self, command, index, payload=b""):
+        frame = bytearray(REPORT_SIZE)
+        V2_HEADER.pack_into(frame, 0, V2_REPORT_ID, 3, 0, len(payload) + 4, command, index)
+        frame[V2_HEADER.size:V2_HEADER.size + len(payload)] = payload
+        struct.pack_into("<H", frame, 2, sum(V2_WORDS.unpack(frame)) & 0xffff)
+        reply = self.report(frame, V2_REPORT_ID, 1, (command, index))
+        _, _, checksum, length, _, _ = V2_HEADER.unpack_from(reply)
+        expected_checksum = (sum(V2_WORDS.unpack(reply)) - checksum) & 0xffff
+        if (length not in ((4, 60) if payload else (60,))
+                or expected_checksum != checksum):
+            raise ValueError(f"Invalid response for record 0x{command:02x}, key ID {index}.")
+        return reply[V2_HEADER.size:]
+
 
 class SayoFile:
-    def __init__(self, path):
-        self.data = bytearray(path.read_bytes())
+    def __init__(self, data):
+        self.data = bytearray(data)
         end = len(self.data)
-        if not self.data.startswith(SAYOBAK_MAGIC) or end < SAYOBAK_RECORD_START:
+        if not self.data.startswith(SAYOBAK_MAGIC):
             raise ValueError("Unsupported .sayobak configuration file format.")
 
         self.keys = {}
         self.lights = {}
+        # Osikiri device exports place records immediately after the magic.
+        first_record = SAYOBAK_RECORD.pack(SAYOBAK_KEY_COMMAND, 0, SAYOBAK_RECORD_SIZE)
         offset = SAYOBAK_RECORD_START
+        if self.data.startswith(first_record, len(SAYOBAK_MAGIC)):
+            offset = len(SAYOBAK_MAGIC)
         while offset < end:
             if end - offset < SAYOBAK_RECORD.size:
                 raise ValueError("The configuration file contains a truncated record header.")
@@ -122,15 +192,79 @@ class SayoFile:
             if offset > end:
                 raise ValueError("The configuration file contains a truncated record.")
             if command == SAYOBAK_KEY_COMMAND:
-                if index in self.keys or size != HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE:
+                if index in self.keys or size != SAYOBAK_RECORD_SIZE:
                     raise ValueError("Invalid key binding record in the configuration file.")
                 self.keys[index] = payload + HEADER_SIZE
             elif command == SAYOBAK_LIGHT_COMMAND:
-                if index in self.lights or size != 56:
+                if index in self.lights or size != SAYOBAK_RECORD_SIZE:
                     raise ValueError("Invalid lighting record in the configuration file.")
                 self.lights[index] = payload
         if self.keys.keys() != set(range(KEY_COUNT)):
             raise ValueError("The configuration file must contain bindings for all 24 keys.")
+
+    @classmethod
+    def load(cls, path):
+        return cls(path.read_bytes())
+
+    def to_text(self):
+        keys = [self.read_key(index) for index in range(KEY_COUNT)]
+        lights_by_layer = [
+            {
+                light["key"]: {"color": light["color"], "mode": light["mode"]}
+                for light in self.lighting(self.lights, layer)
+            }
+            for layer in range(MAX_LAYERS)
+        ]
+        config = {
+            "format": "osikiri-1",
+            "keys": [
+                {
+                    "id": index,
+                    "layers": [
+                        {
+                            "binding": binding(key, layer).hex(":").upper(),
+                            "lighting": lights_by_layer[layer].get(index),
+                        }
+                        for layer in range(MAX_LAYERS)
+                    ],
+                }
+                for index, key in enumerate(keys)
+            ],
+            "source_binary": base64.b64encode(self.data).decode("ascii"),
+        }
+        return json.dumps(config, indent=2) + "\n"
+
+    @classmethod
+    def from_text(cls, path):
+        config = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            if config["format"] != "osikiri-1":
+                raise ValueError("Unsupported text configuration format.")
+            settings = cls(base64.b64decode(config["source_binary"], validate=True))
+            keys = config["keys"]
+            if [key["id"] for key in keys] != list(range(KEY_COUNT)):
+                raise ValueError("Expected key IDs 0-23 in order.")
+            for index, key in enumerate(keys):
+                layers = key["layers"]
+                if len(layers) != MAX_LAYERS:
+                    raise ValueError(f"Expected five layers for key ID {index}.")
+                payload = bytearray(settings.read_key(index))
+                for layer, entry in enumerate(layers):
+                    values = parse_binding(entry["binding"])
+                    offset = layer_offset(payload, layer)
+                    payload[offset] = values[0]
+                    payload[offset + 2:offset + LAYER_SIZE] = values[1:]
+                    if index in settings.lights:
+                        light = entry["lighting"]
+                        if type(light["mode"]) is not int or not 0 <= light["mode"] <= 255:
+                            raise ValueError(f"Invalid lighting trigger for key ID {index}, layer {layer}.")
+                        settings.lighting((index,), layer, parse_color(light["color"]), light["mode"])
+                    elif entry["lighting"] is not None:
+                        raise ValueError(f"The source has no lighting record for key ID {index}.")
+                settings.write_key(index, payload)
+            return settings
+        except (KeyError, TypeError, argparse.ArgumentTypeError, binascii.Error) as exc:
+            raise ValueError(f"Invalid text configuration: {exc}") from exc
 
     def read_key(self, index):
         # Convert to the CLI's legacy key layout. The file stores three
@@ -150,11 +284,29 @@ class SayoFile:
             self.data[offset] = values[0]
             self.data[offset + 4:offset + 8] = values[1:]
 
-    def export(self, path):
-        with tempfile.TemporaryDirectory(dir=path.parent) as directory:
-            temporary = Path(directory) / "settings.sayobak"
-            temporary.write_bytes(self.data)
-            os.link(temporary, path)
+    def export(self, directory, *, prefix=""):
+        write_output(directory, self.to_text(), self.data, prefix=prefix)
+
+    def summary(self):
+        rows = ["Layer  Key ID  Binding (hex)   RGB      Light trigger"]
+        keys = [self.read_key(index) for index in range(KEY_COUNT)]
+        for layer in range(MAX_LAYERS):
+            for index, key in enumerate(keys):
+                values = binding(key, layer).hex(":").upper()
+                light = self.lighting((index,), layer)[0] if index in self.lights else None
+                color = light["color"].upper() if light else "-"
+                trigger = str(light["mode"]) if light else "-"
+                rows.append(f"{layer:>5}  {index:>6}  {values}  {color:<7}  {trigger:>13}")
+        return "\n".join(rows)
+
+    def device_records(self):
+        if self.lights.keys() != self.keys.keys():
+            raise ValueError("Synchronization requires one lighting record per key.")
+        for command, offsets in ((SAYOBAK_KEY_COMMAND, self.keys),
+                                 (SAYOBAK_LIGHT_COMMAND, self.lights)):
+            for index in range(KEY_COUNT):
+                slots = offsets[index] + (HEADER_SIZE if command == SAYOBAK_LIGHT_COMMAND else 0)
+                yield command, index, slots
 
     def lighting(self, indices, layer, color=None, mode=None):
         if any(index not in self.lights for index in indices):
@@ -176,16 +328,65 @@ class SayoFile:
         return result
 
 
-@contextmanager
-def open_device(path):
-    candidates = [
-        node for node, _, name, desc in devices()
-        if "boot" not in name.casefold() and b"\x06\x00\xff" in desc
-        and b"\x85\x02" in desc and (path is None or path == node)
+def pull_settings(args):
+    candidates = configuration_interfaces(args.device, v2=True)
+    if not candidates:
+        raise ValueError("No matching HID v2 configuration interface. Run list to see available devices.")
+    for path, name in candidates:
+        print(f"Reading {name} ({path})", file=sys.stderr)
+        data = bytearray(SAYOBAK_MAGIC)
+        with open_interface(path) as device:
+            for command in (SAYOBAK_KEY_COMMAND, SAYOBAK_LIGHT_COMMAND):
+                for index in range(KEY_COUNT):
+                    record = device.record(command, index)
+                    data.extend(SAYOBAK_RECORD.pack(command, index, len(record)))
+                    data.extend(record)
+        filename_name = re.sub(r"[^\w-]+", "-", name)[:48].strip("-_") or path.name
+        SayoFile(data).export(args.dest, prefix=f"{filename_name}-")
+
+
+def push_settings(args):
+    settings = SayoFile.load(args.src)
+    changes = []
+    with open_device(args.device) as device:
+        for command, index, start in settings.device_records():
+            current = device.record(command, index)
+            desired = settings.data[start:start + MAX_LAYERS * SAYOBAK_LAYER_SIZE]
+            if current[HEADER_SIZE:] != desired:
+                changes.append((command, index, current, current[:HEADER_SIZE] + desired))
+
+        if not args.dry_run:
+            for command, index, current, desired in changes:
+                if device.record(command, index) != current:
+                    raise ValueError(f"Device record changed during synchronization for key ID {index}.")
+                device.record(command, index, desired)
+                if device.record(command, index) != desired:
+                    raise ValueError(f"Device record readback differs for key ID {index}.")
+            if args.save and changes:
+                device.save()
+    for command, index, _, _ in changes:
+        print(f"Key ID {index}: {'binding' if command == SAYOBAK_KEY_COMMAND else 'lighting'}")
+    print(f"{len(changes)} {'records would change' if args.dry_run else 'records changed'}.")
+
+def configuration_interfaces(path, *, v2=False):
+    usage_page, report = (b"\x06\x11\xff", b"\x85\x21") if v2 else (b"\x06\x00\xff", b"\x85\x02")
+    return [
+        (node, name) for node, _, name, desc in devices()
+        if "boot" not in name.casefold() and usage_page in desc
+        and report in desc and (path is None or path == node)
     ]
+
+
+def open_device(path):
+    candidates = configuration_interfaces(path)
     if len(candidates) != 1:
         raise ValueError("Could not select a single legacy HID configuration interface. Run list to see available devices.")
-    fd = os.open(candidates[0], os.O_RDWR | os.O_NONBLOCK)
+    return open_interface(candidates[0][0])
+
+
+@contextmanager
+def open_interface(path):
+    fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         yield Device(fd)
@@ -242,29 +443,45 @@ def parse_color(value):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    target = parser.add_mutually_exclusive_group()
-    target.add_argument("--device", type=Path, help="Target /dev/hidrawN device")
-    target.add_argument("--src", type=Path, help="Input .sayobak configuration file")
+    parser.add_argument("--device", type=Path, help="Target /dev/hidrawN device")
+    parser.add_argument("--src", type=Path, help="Input .sayobak configuration file")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="List SayoDevice HID interfaces",
                         description="Show detected HID paths, USB IDs, and configuration report IDs.")
     commands.add_parser("read", help="Print bindings for all 24 keys as JSON",
-                        description="Read bindings from a USB device or a .sayobak file.",
-                        epilog="Example: python3 sayo24.py --src settings.sayobak read")
+                        description="Read bindings directly from a USB device.",
+                        epilog="Example: python3 sayo24.py read --device /dev/hidrawN")
     commands.add_parser(
         "show", help="Show key bindings and RGB lighting for every layer",
-        description="Display the bindings and lighting in a .sayobak file. Put --src before show.",
-        epilog="Example: python3 sayo24.py --src settings.sayobak show",
+        description="Display the bindings and lighting in a .sayobak file.",
+        epilog="Example: python3 sayo24.py show --src settings.sayobak",
     )
+    pull = commands.add_parser(
+        "pull", help="Read device bindings and lighting into a file pair",
+        description="Read all connected compatible devices unless --device selects one.",
+        epilog="Example: python3 sayo24.py pull /dev/hidrawN",
+    )
+    pull.add_argument("device_path", nargs="?", type=Path, metavar="DEVICE",
+                      help="Target /dev/hidrawN device")
+    pull.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
+    push = commands.add_parser("push", help="Apply bindings and lighting from a .sayobak file")
+    push_action = push.add_mutually_exclusive_group(required=True)
+    push_action.add_argument("--dry-run", action="store_true", help="List records that would change")
+    push_action.add_argument("--apply", action="store_true", help="Write and verify changed records")
+    push.add_argument("--save", action="store_true", help="Save applied changes to nonvolatile memory")
+    encode = commands.add_parser("encode", help="Convert editable JSON to a .sayobak file pair")
+    encode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
+    decode = commands.add_parser("decode", help="Convert a .sayobak file to editable JSON")
+    decode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
     read_light = commands.add_parser(
         "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
-        description="Read lighting for one layer. Put --src before read-light.",
-        epilog="Example: python3 sayo24.py --src settings.sayobak read-light --layer 1",
+        description="Read lighting for one layer in a .sayobak file.",
+        epilog="Example: python3 sayo24.py read-light --src settings.sayobak --layer 1",
     )
     light = commands.add_parser(
         "set-light", help="Edit RGB lighting in the configuration file",
-        description="Change lighting for one layer. Put --src before set-light.",
-        epilog="Example: python3 sayo24.py --src settings.sayobak set-light all --color 00BFFF --dry-run",
+        description="Change lighting for one layer in a .sayobak file.",
+        epilog="Example: python3 sayo24.py set-light --src settings.sayobak all --color 00BFFF --dry-run",
     )
     light.add_argument("key", choices=[str(key) for key in range(KEY_COUNT)] + ["all"],
                        metavar="KEY|all", help="Key ID (0-23), or all keys")
@@ -274,13 +491,13 @@ def main(argv=None):
     for lighting_command in (read_light, light):
         lighting_command.add_argument("--layer", type=int, choices=range(MAX_LAYERS),
                                       default=0, help="Lighting layer (default: 0)")
-    light_destination = light.add_mutually_exclusive_group(required=True)
-    light_destination.add_argument("--dest", type=Path, help="Path for the new .sayobak file")
+    light_destination = light.add_mutually_exclusive_group()
+    light_destination.add_argument("--dest", type=Path, help="Output directory (default: out)")
     light_destination.add_argument("--dry-run", action="store_true", help="Preview the lighting changes")
     edit = commands.add_parser(
         "set", help="Edit the binding for one key on one layer",
-        description="Edit a USB device or use --src before set to edit a .sayobak file.",
-        epilog="Example: python3 sayo24.py --src settings.sayobak set 6 --shortcut Ctrl+Shift+F13 --dry-run",
+        description="Edit a USB device or use --src to edit a .sayobak file.",
+        epilog="Example: python3 sayo24.py set --src settings.sayobak 6 --shortcut Ctrl+Shift+F13 --dry-run",
     )
     edit.add_argument("key", type=int, choices=range(KEY_COUNT), metavar="KEY",
                       help="Key ID (0-23)")
@@ -296,10 +513,36 @@ def main(argv=None):
     edit.add_argument("--dry-run", action="store_true", help="Preview the binding change")
     destination = edit.add_mutually_exclusive_group()
     destination.add_argument("--save", action="store_true", help="Save to the device nonvolatile memory")
-    destination.add_argument("--dest", type=Path, help="Path for the new .sayobak file")
+    destination.add_argument("--dest", type=Path, help="Output directory for file edits (default: out)")
+    # Suppressed defaults keep values supplied before the subcommand.
+    for command in ("read", "set", "pull", "push"):
+        commands.choices[command].add_argument(
+            "--device", type=Path, default=argparse.SUPPRESS, help="Target /dev/hidrawN device",
+        )
+    for command in ("show", "read-light", "set-light", "set", "push", "decode", "encode"):
+        commands.choices[command].add_argument(
+            "--src", type=Path, default=argparse.SUPPRESS, help="Input configuration file",
+        )
     args = parser.parse_args(argv)
+    if args.command == "pull" and args.device_path is not None:
+        if args.device is not None:
+            parser.error("Specify the pull device as a positional argument or with --device.")
+        args.device = args.device_path
+    if args.command == "pull" and args.src:
+        parser.error("pull reads from the device and does not accept --src.")
+    if args.command == "push":
+        if not args.src:
+            parser.error("push requires --src.")
+        if args.save and not args.apply:
+            parser.error("--save requires --apply.")
+    elif args.device and args.src:
+        parser.error("--device and --src can only be combined for push.")
+    if args.command in ("encode", "decode") and (not args.src or args.device):
+        parser.error(f"{args.command} requires --src and does not use a USB device.")
     if args.command == "list" and args.src:
         parser.error("list does not accept --src.")
+    if args.command == "read" and args.src:
+        parser.error("Use show with --src to display a configuration file.")
     if args.command == "show" and not args.src:
         parser.error("show requires --src.")
     if args.command in ("read-light", "set-light") and not args.src:
@@ -307,37 +550,37 @@ def main(argv=None):
     if args.command == "set":
         if args.dry_run and (args.save or args.dest):
             parser.error("--dry-run cannot be combined with --save or --dest.")
-        if args.src and (args.save or not (args.dry_run or args.dest)):
-            parser.error("set with --src requires either --dest or --dry-run.")
+        if args.src and args.save:
+            parser.error("--save is only available when editing a USB device.")
         if args.dest and not args.src:
             parser.error("--dest requires --src.")
 
     try:
+        if args.command == "pull":
+            pull_settings(args)
+            return 0
+        if args.command == "push":
+            push_settings(args)
+            return 0
+        if args.command == "encode":
+            SayoFile.from_text(args.src).export(args.dest)
+            return 0
+        if args.command == "decode":
+            write_output(args.dest, SayoFile.load(args.src).to_text())
+            return 0
         if args.command == "show":
-            settings = SayoFile(args.src)
-            indices = range(KEY_COUNT)
-            keys = [settings.read_key(index) for index in indices]
-            rows = ["Layer  Key ID  Binding (hex)   RGB      Light trigger"]
-            for layer in range(MAX_LAYERS):
-                lights = settings.lighting(indices, layer)
-                for key, light in zip(keys, lights):
-                    values = binding(key, layer).hex(":").upper()
-                    rows.append(
-                        f"{layer:>5}  {light['key']:>6}  {values}  "
-                        f"{light['color'].upper()}  {light['mode']:>13}"
-                    )
-            print("\n".join(rows))
+            print(SayoFile.load(args.src).summary())
             return 0
         if args.command == "read-light":
-            print(json.dumps(SayoFile(args.src).lighting(range(KEY_COUNT), args.layer), indent=2))
+            print(json.dumps(SayoFile.load(args.src).lighting(range(KEY_COUNT), args.layer), indent=2))
             return 0
         if args.command == "set-light":
-            settings = SayoFile(args.src)
+            settings = SayoFile.load(args.src)
             indices = range(KEY_COUNT) if args.key == "all" else [int(args.key)]
             mode = {"static": 0, "held": 1}.get(args.mode)
             result = settings.lighting(indices, args.layer, args.color, mode)
-            if args.dest:
-                settings.export(args.dest)
+            if not args.dry_run:
+                settings.export(args.dest or OUTPUT_DIR)
             print(json.dumps(result, indent=2))
             return 0
         if args.command == "list":
@@ -346,7 +589,7 @@ def main(argv=None):
                 print(f"{node} 8089:{pid:04x} {name} (report {', '.join(reports) or '-'})")
             return 0
 
-        target = nullcontext(SayoFile(args.src)) if args.src else open_device(args.device)
+        target = nullcontext(SayoFile.load(args.src)) if args.src else open_device(args.device)
         with target as device:
             keys = [device.read_key(index) for index in range(KEY_COUNT)]
             if args.command == "read":
@@ -366,8 +609,8 @@ def main(argv=None):
                 device.write_key(index, bytes(updated))
             if args.save:
                 device.save()
-            if args.dest:
-                device.export(args.dest)
+            if args.src and not args.dry_run:
+                device.export(args.dest or OUTPUT_DIR)
             print(json.dumps(describe(updated)))
         return 0
     except (OSError, ValueError) as exc:

@@ -6,9 +6,18 @@ A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over U
 
 Osikiri takes its name from the Japanese place name Oshikiri (押切) and also alludes to pressing a key (キーを押す).
 
+## Configuration commands
+
+| Direction | Command |
+| --- | --- |
+| Device → files | `pull` |
+| Binary file → device | `push` |
+| Text → binary | `encode` |
+| Binary → text | `decode` |
+
 ## Command help
 
-Use `--help` for a list of commands or place it after a command for its options.
+Write the subcommand first, followed by its options. Use `--help` for a list of commands or place it after a command for its options.
 
 ```sh
 python3 sayo24.py --help
@@ -22,24 +31,43 @@ USB access uses Linux `hidraw` and the legacy HID configuration protocol (Report
 
 ```sh
 python3 sayo24.py list
-python3 sayo24.py --device /dev/hidrawN read
+python3 sayo24.py read --device /dev/hidrawN
 ```
 
 Use the device path shown by `list`. You can omit `--device` if there is only one legacy configuration interface. For the `8089:0008` Left and Right units, select each device by its own path. Device numbers can change when you reconnect the units.
 
 The `read` command lists all 24 keys in device-number order. The mapping from key numbers to physical positions depends on the model and firmware.
 
+### How to read the JSON output (USB device)
+
+The output is a JSON array with one object per key. Here is one object from that array:
+
+```json
+{
+  "key": 6,
+  "layers": [
+    [0, 3, 104, 0, 0],
+    [0, 0, 28, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0]
+  ]
+}
+```
+
+`key` is the device key number. The entries in `layers` are indexed by Fn layer, so `layers[0]` is Fn 0. Each entry contains `[MODE, P0, P1, P2, P3]` in decimal. In this example, Fn 0 is Ctrl+Shift+F13 and Fn 1 is Y. The decimal values `104` and `28` correspond to hexadecimal `68` and `1C` in the `show` table.
+
 ## Change a key binding
 
 ```sh
 # Copy the Fn 0 binding from key ID 1 to key ID 0
-python3 sayo24.py --device /dev/hidrawN set 0 --copy-from 1 --layer 0
+python3 sayo24.py set --device /dev/hidrawN 0 --copy-from 1 --layer 0
 
 # Preview a shortcut on key ID 6
-python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --dry-run
+python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --dry-run
 
 # Apply the shortcut and save it to the device
-python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --save
+python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
 ```
 
 `--shortcut` accepts letters, digits, F1–F24, arrow keys, and common keys such as Enter. Use Ctrl, Shift, Alt, or Gui (Windows / Command) as modifiers. Prefix a modifier with `R` for its right-hand counterpart, such as `RCtrl`.
@@ -58,7 +86,7 @@ Reading all 24 keys and five layers was verified on both `8089:0008` Left and Ri
 ## View key bindings and lighting
 
 ```sh
-python3 sayo24.py --src original.sayobak show
+python3 sayo24.py show --src original.sayobak
 ```
 
 The table shows key IDs 0–23 and Fn layers 0–4, matching the official configurator. CLI arguments and JSON key IDs use the same numbering. If you used an earlier release, subtract 1 from its key and layer arguments. Each row includes the key number, binding (mode and four hexadecimal parameter bytes), RGB color, and numeric lighting trigger. The official configurator lists effects such as Static and Breathing under Light Mode. The CLI reads the trigger value and supports continuous or press-triggered lighting settings.
@@ -132,37 +160,17 @@ On the Left unit, `Key ID 4` on Fn 0 has the binding `80:02:00:00:00`, which set
 ## Edit a .sayobak configuration file
 
 ```sh
-python3 sayo24.py --src original.sayobak read
-python3 sayo24.py --src original.sayobak set 6 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
+python3 sayo24.py set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest out
 ```
 
-This works offline with the 24-key, five-layer layout verified in a sample .sayobak file (format 1.0). The output preserves all bytes outside the edited binding, including RGB settings. Use a new output path. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
-
-### How to read the JSON output
-
-The output is a JSON array with one object per key. Here is one object from that array:
-
-```json
-{
-  "key": 6,
-  "layers": [
-    [0, 3, 104, 0, 0],
-    [0, 0, 28, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0]
-  ]
-}
-```
-
-`key` is the device key number. The entries in `layers` are indexed by Fn layer, so `layers[0]` is Fn 0. Each entry contains `[MODE, P0, P1, P2, P3]` in decimal. In this example, Fn 0 is Ctrl+Shift+F13 and Fn 1 is Y. The decimal values `104` and `28` correspond to hexadecimal `68` and `1C` in the `show` table.
+This works offline with the 24-key, five-layer layout verified in a sample .sayobak file (format 1.0). The output preserves all bytes outside the edited binding, including RGB settings. Use `--dest` to select the output directory. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
 
 ## Configure lighting in a .sayobak file
 
 ```sh
-python3 sayo24.py --src original.sayobak read-light --layer 1
-python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dry-run
-python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dest edited.sayobak
+python3 sayo24.py read-light --src original.sayobak --layer 1
+python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dry-run
+python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dest out
 ```
 
 Use a key ID from 0 to 23 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the configuration file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
@@ -193,3 +201,30 @@ In the official configurator, **Light Mode** selects the lighting effect. The ta
 | --- | --- | --- |
 | `0` | `--mode static` | Continuously |
 | `1` | `--mode held` | While the key is pressed |
+
+## Synchronize the device and configuration files
+
+```sh
+python3 sayo24.py pull
+python3 sayo24.py pull /dev/hidrawN
+python3 sayo24.py pull --device /dev/hidrawN --dest out
+python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --dry-run
+python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --apply --save
+```
+
+`pull` reads all 24 keys and five Fn layers, including RGB lighting, over HID Report ID `0x21`. The device is the sole input. With no device path, `pull` reads all connected compatible devices. To read a single device, pass its HID path directly or with `--device`. The command prints the device name and path before writing its files. Osikiri waits for a reply matching the requested record when the device sends unrelated HID reports. The generated `.sayobak` contains only the key bindings and lighting records read by Osikiri. Scripts and color tables are outside this export. Importing this partial file in the official configurator has yet to be verified. `push` applies only key bindings and lighting from the binary file, verifies each changed record, and optionally saves successful changes to nonvolatile memory. If a write fails partway through, the live settings may reflect the records written before the failure.
+
+Whenever a command writes a binary `.sayobak` file, it also writes a same-name `.json` file with editable JSON. Output names use local time in 24-hour format, `yyyy-MM-dd-hh-mm-ss.json` and `yyyy-MM-dd-hh-mm-ss.sayobak`. Both files in a pair share the same timestamp. For `pull`, the device name comes before the timestamp, with spaces and filename separators replaced by hyphens. For example, `SayoDevice-Left-2026-11-23-12-00-00.sayobak`. If a name is already in use, the tool advances the timestamp by one second until it finds an available name. `--dest` selects the output directory and defaults to `out/`. The tool creates the directory if needed and prints the generated paths. Use those paths in subsequent commands.
+
+## Convert between text and binary
+
+```sh
+python3 sayo24.py decode --src original.sayobak --dest out
+python3 sayo24.py encode --src out/2026-11-23-12-00-00.json --dest out
+```
+
+Each `keys[].id` identifies the key for all its layers. Each `lighting` object contains only `color` and `mode`. Edit `keys[].layers[].binding` in `MODE:P0:P1:P2:P3` hexadecimal format and `lighting.color` or `lighting.mode` for RGB and trigger settings.
+
+When you run `encode`, the JSON values for `binding`, `lighting.color`, and `lighting.mode` take precedence over the corresponding values in `source_binary`. For example, if the embedded binary assigns Y but the JSON specifies `00:03:68:00:00`, the output assigns Ctrl+Shift+F13.
+
+The embedded `source_binary` preserves the original data outside these fields, including scripts and color tables. Keep it intact. An unchanged text file encodes to a byte-identical binary.
