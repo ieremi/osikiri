@@ -108,12 +108,12 @@ On the Left unit, `Key ID 4` on Fn 0 has the binding `80:02:00:00:00`, which set
 
 ### Light Mode and trigger values
 
-In the official configurator, **Light Mode** selects the lighting effect. The table lists the available effects and the known file codes. Static uses effect code `0`. The official configurator displayed Breathing after importing effect code `2`. The remaining codes are unverified. [Official lighting guide](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [Captured Static report](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
+In the official configurator, **Light Mode** selects the lighting effect. The table lists the available effects and the known file codes. Static uses effect code `0`. The official configurator displayed Indicator for effect code `1` and Breathing for `2`. The remaining codes are unverified. [Official lighting guide](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [Captured Static report](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
 
 | Light Mode | File code | Effect |
 | --- | --- | --- |
 | Static | `0` | Steady light, controlled by the trigger |
-| Indicator | Unverified | Shows Num Lock, Caps Lock, or Scroll Lock status |
+| Indicator | `1` | Shows Num Lock, Caps Lock, or Scroll Lock status |
 | Breathing | `2` | Repeatedly brightens and dims |
 | Breathing Once | Unverified | Runs one breathing cycle on a trigger |
 | Wave | Unverified | Animates colors in a non-static color mode |
@@ -124,13 +124,17 @@ In the official configurator, **Light Mode** selects the lighting effect. The ta
 | Fade out | Unverified | Gradually turns off on a trigger |
 | Fade in | Unverified | Gradually turns on on a trigger |
 
-The JSON field `lighting.trigger` is the lighting trigger. Set the Light Mode code in `lighting.effect`, for example `0` for Static or `2` for Breathing. Set the RGB color in `lighting.color`, for example `"#00BFFF"`.
+The JSON field `lighting.trigger` is the lighting trigger. Set the Light Mode code in `lighting.effect`, for example `0` for Static, `1` for Indicator, or `2` for Breathing. Set the RGB color in `lighting.color`, for example `"#00BFFF"`.
 
 | Trigger value | When a Static light is on |
 | --- | --- |
 | `0` | Continuously |
 | `1` | While the key is pressed |
 | `2` | On release (shown as **Release Light Up** in the official configurator) |
+
+With Indicator (`effect: 1`), the official configurator shows an **Indicator** selector. For this effect, the confirmed values are `trigger: 1` for **NumLock**, `trigger: 2` for **CapsLock**, and `trigger: 4` for **ScrollLock**.
+
+The selector also lists **ComposeLock** and **KanaLock**. Their `trigger` values are unverified.
 
 Example `lighting` object for Breathing at 4x:
 

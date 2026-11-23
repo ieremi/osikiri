@@ -108,12 +108,12 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 
 ### Light Modeと点灯トリガーの値
 
-公式ツールの **Light Mode** は点灯効果を選ぶ項目です。下表に各効果と、確認できたファイル上の番号を示します。Staticの効果番号は `0` です。効果番号 `2` のファイルを読み込むと、公式ツールにBreathingと表示されました。残りの番号は未確認です。 [公式の照明設定ガイド](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [採取されたStaticのレポート](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
+公式ツールの **Light Mode** は点灯効果を選ぶ項目です。下表に各効果と、確認できたファイル上の番号を示します。Staticの効果番号は `0` です。公式ツールでは効果番号 `1` がIndicator、`2` がBreathingと表示されました。残りの番号は未確認です。 [公式の照明設定ガイド](https://github.com/Sayobot/SayoDevice_manual/blob/main/docs/en/docs/std/web_hid/led.md) · [採取されたStaticのレポート](https://github.com/kennedn/sayodevice-controller/blob/main/README.md#protocol)
 
 | Light Mode | ファイル上の番号 | 効果 |
 | --- | --- | --- |
 | Static | `0` | 明るさが一定で、点灯はトリガーに従う |
-| Indicator | 未確認 | Num Lock、Caps Lock、Scroll Lockの状態を表示する |
+| Indicator | `1` | Num Lock、Caps Lock、Scroll Lockの状態を表示する |
 | Breathing | `2` | 明るくなったり暗くなったりを繰り返す |
 | Breathing Once | 未確認 | トリガーで明暗の変化を1周期実行する |
 | Wave | 未確認 | 固定色以外のカラーモードで色を動かす |
@@ -124,13 +124,17 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 | Fade out | 未確認 | トリガーで徐々に消灯する |
 | Fade in | 未確認 | トリガーで徐々に点灯する |
 
-JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は `lighting.effect` に指定します。たとえばStaticは `0`、Breathingは `2` です。RGB色は `lighting.color` に `"#00BFFF"` のように指定します。
+JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は `lighting.effect` に指定します。たとえばStaticは `0`、Indicatorは `1`、Breathingは `2` です。RGB色は `lighting.color` に `"#00BFFF"` のように指定します。
 
 | トリガー値 | Staticでの点灯条件 |
 | --- | --- |
 | `0` | 常時点灯 |
 | `1` | キーを押している間だけ点灯 |
 | `2` | キーを離すと点灯（公式ツールでは **Release Light Up**） |
+
+Indicator（`effect: 1`）では、公式ツールに **Indicator** の選択欄が表示されます。この効果で確認済みの値は、`trigger: 1` が **NumLock**、`trigger: 2` が **CapsLock**、`trigger: 4` が **ScrollLock** です。
+
+選択欄には **ComposeLock** と **KanaLock** も表示されます。対応する `trigger` 値は未確認です。
 
 Breathingを4xで使う場合の `lighting` の例です。
 
