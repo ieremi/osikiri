@@ -251,6 +251,11 @@ def main(argv=None):
     commands.add_parser("read", help="Print bindings for all 24 keys as JSON",
                         description="Read bindings from a USB device or a .sayobak file.",
                         epilog="Example: python3 sayo24.py --src settings.sayobak read")
+    commands.add_parser(
+        "show", help="Show key bindings and RGB lighting for every layer",
+        description="Display the bindings and lighting in a .sayobak file. Put --src before show.",
+        epilog="Example: python3 sayo24.py --src settings.sayobak show",
+    )
     read_light = commands.add_parser(
         "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
         description="Read lighting for one layer. Put --src before read-light.",
@@ -295,6 +300,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command == "list" and args.src:
         parser.error("list does not accept --src.")
+    if args.command == "show" and not args.src:
+        parser.error("show requires --src.")
     if args.command in ("read-light", "set-light") and not args.src:
         parser.error("Lighting commands require --src.")
     if args.command == "set":
@@ -306,6 +313,21 @@ def main(argv=None):
             parser.error("--dest requires --src.")
 
     try:
+        if args.command == "show":
+            settings = SayoFile(args.src)
+            indices = range(KEY_COUNT)
+            keys = [settings.read_key(index) for index in indices]
+            rows = ["Layer  Key  Binding (hex)   RGB      Light trigger"]
+            for layer in range(1, MAX_LAYERS + 1):
+                lights = settings.lighting(indices, layer)
+                for key, light in zip(keys, lights):
+                    values = binding(key, layer).hex(":").upper()
+                    rows.append(
+                        f"{layer:>5}  {light['key']:>3}  {values}  "
+                        f"{light['color'].upper()}  {light['mode']:>13}"
+                    )
+            print("\n".join(rows))
+            return 0
         if args.command == "read-light":
             print(json.dumps(SayoFile(args.src).lighting(range(KEY_COUNT), args.layer), indent=2))
             return 0
