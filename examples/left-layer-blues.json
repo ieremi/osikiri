@@ -1,0 +1,1446 @@
+{
+  "format": "osikiri-1",
+  "keys": [
+    {
+      "id": 0,
+      "layers": [
+        {
+          "binding": "00:00:1C:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:2D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:1C:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "layers": [
+        {
+          "binding": "00:00:0C:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:2B:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:2E:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:22:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:3E:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "layers": [
+        {
+          "binding": "00:00:1B:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:02:35:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:17:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "layers": [
+        {
+          "binding": "80:03:00:00:00",
+          "lighting": {
+            "effect": 2,
+            "color": "#80c9ff",
+            "speed": 8,
+            "light_duration": 80,
+            "dark_duration": 40,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:2C:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:1D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "layers": [
+        {
+          "binding": "80:02:00:00:00",
+          "lighting": {
+            "effect": 2,
+            "color": "#80c9ff",
+            "speed": 8,
+            "light_duration": 80,
+            "dark_duration": 40,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "layers": [
+        {
+          "binding": "00:00:0E:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:27:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:27:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:1A:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "layers": [
+        {
+          "binding": "00:00:18:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:4D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:30:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:21:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:3D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "layers": [
+        {
+          "binding": "00:00:13:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:19:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:30:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:73:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "layers": [
+        {
+          "binding": "00:00:37:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:1B:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:2F:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:72:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "layers": [
+        {
+          "binding": "00:00:08:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:4B:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:2F:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:20:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:3C:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "layers": [
+        {
+          "binding": "00:00:0D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:02:26:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:26:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:04:50:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "layers": [
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "layers": [
+        {
+          "binding": "80:04:00:00:00",
+          "lighting": {
+            "effect": 2,
+            "color": "#80c9ff",
+            "speed": 8,
+            "light_duration": 80,
+            "dark_duration": 40,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "layers": [
+        {
+          "binding": "00:00:14:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:02:21:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:45:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "layers": [
+        {
+          "binding": "00:00:12:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:4E:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:02:1F:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:1F:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:3B:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "layers": [
+        {
+          "binding": "00:00:36:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:06:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:02:20:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:71:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "layers": [
+        {
+          "binding": "00:00:2D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:01:04:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:02:35:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:70:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "layers": [
+        {
+          "binding": "00:00:04:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:4A:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:38:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:1E:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:3A:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "layers": [
+        {
+          "binding": "00:00:40:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:20:2D:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:44:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "layers": [
+        {
+          "binding": "00:01:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "layers": [
+        {
+          "binding": "00:08:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "layers": [
+        {
+          "binding": "00:02:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "layers": [
+        {
+          "binding": "80:01:00:00:00",
+          "lighting": {
+            "effect": 2,
+            "color": "#80c9ff",
+            "speed": 8,
+            "light_duration": 80,
+            "dark_duration": 40,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "layers": [
+        {
+          "binding": "00:04:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#164dff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00bfff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#00e5ff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#565bff",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        },
+        {
+          "binding": "00:00:00:00:00",
+          "lighting": {
+            "effect": 0,
+            "color": "#0038a8",
+            "speed": 8,
+            "light_duration": 0,
+            "dark_duration": 0,
+            "trigger": 0
+          }
+        }
+      ]
+    }
+  ],
+  "source_binary": "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"
+}
