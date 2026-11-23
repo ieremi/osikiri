@@ -26,8 +26,10 @@ MAX_LAYERS = 5
 SYSFS = Path("/sys/class/hidraw")
 OUTPUT_DIR = Path("out")
 SAYOBAK_MAGIC = b"Sayo Device Backup File 1.0".ljust(64, b"\0")
-SAYOBAK_RECORD_START = 0x69
 SAYOBAK_RECORD = struct.Struct("<BBI")
+SAYOBAK_MODEL_24_KEY = 0x08
+SAYOBAK_OPTIONS_COMMAND = 0x03
+SAYOBAK_OPTIONS_SIZE = 34
 SAYOBAK_LAYER_SIZE = 8
 SAYOBAK_KEY_COMMAND = 0x10
 SAYOBAK_LIGHT_COMMAND = 0x11
@@ -136,10 +138,12 @@ class Device:
         reply = self.report(frame, V2_REPORT_ID, 1, (command, index))
         _, _, checksum, length, _, _ = V2_HEADER.unpack_from(reply)
         expected_checksum = (sum(V2_WORDS.unpack(reply)) - checksum) & 0xffff
-        if (length not in ((4, 60) if payload else (60,))
+        record_size = SAYOBAK_OPTIONS_SIZE if command == SAYOBAK_OPTIONS_COMMAND else SAYOBAK_RECORD_SIZE
+        expected_length = record_size + 4
+        if (length not in ((4, expected_length) if payload else (expected_length,))
                 or expected_checksum != checksum):
             raise ValueError(f"Invalid response for record 0x{command:02x}, key ID {index}.")
-        return reply[V2_HEADER.size:]
+        return reply[V2_HEADER.size:V2_HEADER.size + length - 4]
 
 
 class SayoFile:
@@ -151,11 +155,15 @@ class SayoFile:
 
         self.keys = {}
         self.lights = {}
-        # Osikiri device exports place records immediately after the magic.
+        # Older Osikiri files omitted the model marker and device options.
         first_record = SAYOBAK_RECORD.pack(SAYOBAK_KEY_COMMAND, 0, SAYOBAK_RECORD_SIZE)
-        offset = SAYOBAK_RECORD_START
-        if self.data.startswith(first_record, len(SAYOBAK_MAGIC)):
-            offset = len(SAYOBAK_MAGIC)
+        self.compact = self.data.startswith(first_record, len(SAYOBAK_MAGIC))
+        offset = len(SAYOBAK_MAGIC)
+        if not self.compact:
+            options_header = SAYOBAK_RECORD.pack(SAYOBAK_OPTIONS_COMMAND, 0, SAYOBAK_OPTIONS_SIZE)
+            if not self.data.startswith(options_header, offset + 1):
+                raise ValueError("Invalid .sayobak device options header.")
+            offset += 1
         while offset < end:
             if end - offset < SAYOBAK_RECORD.size:
                 raise ValueError("The configuration file contains a truncated record header.")
@@ -258,6 +266,8 @@ class SayoFile:
             self.data[offset + 4:offset + 8] = values[1:]
 
     def export(self, directory, *, prefix=""):
+        if self.compact:
+            raise ValueError("Cannot export a compact .sayobak file.")
         write_output(directory, self.to_text(), self.data, prefix=prefix)
 
     def device_records(self):
@@ -296,12 +306,18 @@ def pull_settings(args):
     for path, name in candidates:
         print(f"Reading {name} ({path})", file=sys.stderr)
         data = bytearray(SAYOBAK_MAGIC)
+        data.append(SAYOBAK_MODEL_24_KEY)
         with open_interface(path) as device:
-            for command in (SAYOBAK_KEY_COMMAND, SAYOBAK_LIGHT_COMMAND):
-                for index in range(KEY_COUNT):
-                    record = device.record(command, index)
-                    data.extend(SAYOBAK_RECORD.pack(command, index, len(record)))
-                    data.extend(record)
+            records = (
+                (SAYOBAK_OPTIONS_COMMAND, range(1)),
+                (SAYOBAK_KEY_COMMAND, range(KEY_COUNT)),
+                (SAYOBAK_LIGHT_COMMAND, range(KEY_COUNT)),
+            )
+            for command, indices in records:
+                for index in indices:
+                    payload = device.record(command, index)
+                    data.extend(SAYOBAK_RECORD.pack(command, index, len(payload)))
+                    data.extend(payload)
         filename_name = re.sub(r"[^\w-]+", "-", name)[:48].strip("-_") or path.name
         SayoFile(data).export(args.dest, prefix=f"{filename_name}-")
 
@@ -333,9 +349,10 @@ def push_settings(args):
 def configuration_interfaces(path, *, v2=False):
     usage_page, report = (b"\x06\x11\xff", b"\x85\x21") if v2 else (b"\x06\x00\xff", b"\x85\x02")
     return [
-        (node, name) for node, _, name, desc in devices()
+        (node, name) for node, product, name, desc in devices()
         if "boot" not in name.casefold() and usage_page in desc
         and report in desc and (path is None or path == node)
+        and (not v2 or product == SAYOBAK_MODEL_24_KEY)
     ]
 
 
@@ -391,7 +408,7 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     pull = commands.add_parser(
         "pull", help="Read device bindings and lighting into a file pair",
-        description="Read all connected compatible devices unless --device selects one.",
+        description="Read compatible devices and build .sayobak files from their configuration records.",
         epilog="Example: ./osikiri pull /dev/hidrawN",
     )
     pull.add_argument("device_path", nargs="?", type=Path, metavar="DEVICE",
@@ -444,7 +461,10 @@ def main(argv=None):
             push_settings(args)
             return 0
         if args.command == "encode":
-            SayoFile.from_text(args.src).export(args.dest)
+            settings = SayoFile.from_text(args.src)
+            if settings.compact:
+                raise ValueError("This older JSON lacks device options. Pull the device again or decode an official file.")
+            settings.export(args.dest)
             return 0
         if args.command == "decode":
             write_output(args.dest, SayoFile.load(args.src).to_text())
