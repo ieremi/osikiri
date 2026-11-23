@@ -4,6 +4,16 @@
 
 24キーのSayoDevice向けPython 3 CLIです。USB接続または `.sayobak` 設定ファイルからキー割り当てを読み書きでき、設定ファイル内のRGB照明も設定できます。追加のPythonパッケージは不要です。 CLIのヘルプとエラーメッセージは英語で表示されます。
 
+## コマンドのヘルプ
+
+`--help` でコマンド一覧を表示できます。各コマンドのオプションを確認するには、コマンド名の後に `--help` を付けます。
+
+```sh
+python3 sayo24.py --help
+python3 sayo24.py set --help
+python3 sayo24.py set-light --help
+```
+
 ## USBで接続する
 
 USB接続にはLinuxの `hidraw` と旧HID設定プロトコル（Report ID `0x02`、Usage Page `0xFF00`）を使います。対象の `/dev/hidrawN` への読み書き権限が必要です。

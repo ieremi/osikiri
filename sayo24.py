@@ -246,13 +246,25 @@ def main(argv=None):
     target.add_argument("--device", type=Path, help="Target /dev/hidrawN device")
     target.add_argument("--src", type=Path, help="Input .sayobak configuration file")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("list", help="List SayoDevice HID interfaces")
-    commands.add_parser("read", help="Print bindings for all 24 keys as JSON")
-    read_light = commands.add_parser("read-light", help="Show RGB lighting for all 24 keys in the configuration file")
-    light = commands.add_parser("set-light", help="Edit RGB lighting in the configuration file")
+    commands.add_parser("list", help="List SayoDevice HID interfaces",
+                        description="Show detected HID paths, USB IDs, and configuration report IDs.")
+    commands.add_parser("read", help="Print bindings for all 24 keys as JSON",
+                        description="Read bindings from a USB device or a .sayobak file.",
+                        epilog="Example: python3 sayo24.py --src settings.sayobak read")
+    read_light = commands.add_parser(
+        "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
+        description="Read lighting for one layer. Put --src before read-light.",
+        epilog="Example: python3 sayo24.py --src settings.sayobak read-light --layer 2",
+    )
+    light = commands.add_parser(
+        "set-light", help="Edit RGB lighting in the configuration file",
+        description="Change lighting for one layer. Put --src before set-light.",
+        epilog="Example: python3 sayo24.py --src settings.sayobak set-light all --color 00BFFF --dry-run",
+    )
     light.add_argument("key", choices=[str(key) for key in range(1, KEY_COUNT + 1)] + ["all"],
-                       metavar="KEY|all")
-    light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB")
+                       metavar="KEY|all", help="Key number (1-24), or all keys")
+    light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB",
+                       help="Six hexadecimal RGB digits, optionally prefixed with #")
     light.add_argument("--mode", choices=("static", "held"), help="Light continuously or only while pressed")
     for lighting_command in (read_light, light):
         lighting_command.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1),
@@ -260,13 +272,22 @@ def main(argv=None):
     light_destination = light.add_mutually_exclusive_group(required=True)
     light_destination.add_argument("--dest", type=Path, help="Path for the new .sayobak file")
     light_destination.add_argument("--dry-run", action="store_true", help="Preview the lighting changes")
-    edit = commands.add_parser("set", help="Edit the binding for one key on one layer")
-    edit.add_argument("key", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY")
-    edit.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1), default=1)
+    edit = commands.add_parser(
+        "set", help="Edit the binding for one key on one layer",
+        description="Edit a USB device or use --src before set to edit a .sayobak file.",
+        epilog="Example: python3 sayo24.py --src settings.sayobak set 7 --shortcut Ctrl+Shift+F13 --dry-run",
+    )
+    edit.add_argument("key", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY",
+                      help="Key number (1-24)")
+    edit.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1), default=1,
+                      help="Binding layer (default: 1)")
     source = edit.add_mutually_exclusive_group(required=True)
-    source.add_argument("--copy-from", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY")
-    source.add_argument("--binding", type=parse_binding, metavar="MODE:P0:P1:P2:P3")
-    source.add_argument("--shortcut", type=parse_shortcut, metavar="CTRL+SHIFT+F13")
+    source.add_argument("--copy-from", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY",
+                        help="Copy another key's binding from the selected layer")
+    source.add_argument("--binding", type=parse_binding, metavar="MODE:P0:P1:P2:P3",
+                        help="Enter the binding as five hexadecimal bytes")
+    source.add_argument("--shortcut", type=parse_shortcut, metavar="CTRL+SHIFT+F13",
+                        help="Assign a key with optional modifiers")
     edit.add_argument("--dry-run", action="store_true", help="Preview the binding change")
     destination = edit.add_mutually_exclusive_group()
     destination.add_argument("--save", action="store_true", help="Save to the device nonvolatile memory")

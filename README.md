@@ -4,6 +4,16 @@
 
 A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` configuration file, and configures RGB lighting in configuration files. No additional Python packages are required. CLI help and error messages are in English.
 
+## Command help
+
+Use `--help` for a list of commands or place it after a command for its options.
+
+```sh
+python3 sayo24.py --help
+python3 sayo24.py set --help
+python3 sayo24.py set-light --help
+```
+
 ## Connect over USB
 
 USB access uses Linux `hidraw` and the legacy HID configuration protocol (Report ID `0x02`, Usage Page `0xFF00`). You need read/write access to the corresponding `/dev/hidrawN` node.
