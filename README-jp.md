@@ -219,9 +219,11 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 ## テキストとバイナリを相互変換する
 
 ```sh
-./osikiri decode --src original.sayobak --dest out
+./osikiri decode original.sayobak --dest out
 ./osikiri encode --src out/2026-11-23-12-00-00.json --dest out
 ```
+
+`decode` の入力ファイルは直接指定するか、`--src` で指定できます。
 
 `keys[].id` が、そのキーの全レイヤーに共通するIDです。`lighting` オブジェクトには `color` と `mode` が入ります。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。RGBと点灯トリガーは `lighting.color` と `lighting.mode` で指定します。
 

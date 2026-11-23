@@ -472,6 +472,8 @@ def main(argv=None):
     encode = commands.add_parser("encode", help="Convert editable JSON to a .sayobak file pair")
     encode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
     decode = commands.add_parser("decode", help="Convert a .sayobak file to editable JSON")
+    decode.add_argument("source_path", nargs="?", type=Path, metavar="FILE",
+                        help="Input .sayobak configuration file")
     decode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
     read_light = commands.add_parser(
         "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
@@ -528,6 +530,10 @@ def main(argv=None):
         if args.device is not None:
             parser.error("Specify the pull device as a positional argument or with --device.")
         args.device = args.device_path
+    if args.command == "decode" and args.source_path is not None:
+        if args.src is not None:
+            parser.error("Specify the decode input as a positional argument or with --src.")
+        args.src = args.source_path
     if args.command == "pull" and args.src:
         parser.error("pull reads from the device and does not accept --src.")
     if args.command == "push":
@@ -537,8 +543,12 @@ def main(argv=None):
             parser.error("--save requires --apply.")
     elif args.device and args.src:
         parser.error("--device and --src can only be combined for push.")
-    if args.command in ("encode", "decode") and (not args.src or args.device):
-        parser.error(f"{args.command} requires --src and does not use a USB device.")
+    if args.command in ("encode", "decode") and args.device:
+        parser.error(f"{args.command} does not use a USB device.")
+    if args.command == "decode" and not args.src:
+        parser.error("decode requires an input file.")
+    if args.command == "encode" and not args.src:
+        parser.error("encode requires --src.")
     if args.command == "list" and args.src:
         parser.error("list does not accept --src.")
     if args.command == "read" and args.src:
