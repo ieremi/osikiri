@@ -400,6 +400,8 @@ def main(argv=None):
     push = commands.add_parser("push", help="Apply and save bindings and lighting from a .sayobak file")
     push.add_argument("--dry-run", action="store_true", help="List records that would change without writing")
     encode = commands.add_parser("encode", help="Convert editable JSON to a .sayobak file pair")
+    encode.add_argument("source_path", nargs="?", type=Path, metavar="FILE",
+                        help="Input JSON configuration file")
     encode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
     decode = commands.add_parser("decode", help="Convert a .sayobak file to editable JSON")
     decode.add_argument("source_path", nargs="?", type=Path, metavar="FILE",
@@ -419,9 +421,9 @@ def main(argv=None):
         if args.device is not None:
             parser.error("Specify the pull device as a positional argument or with --device.")
         args.device = args.device_path
-    if args.command == "decode" and args.source_path is not None:
+    if args.command in ("encode", "decode") and args.source_path is not None:
         if args.src is not None:
-            parser.error("Specify the decode input as a positional argument or with --src.")
+            parser.error(f"Specify the {args.command} input as a positional argument or with --src.")
         args.src = args.source_path
     if args.command == "pull" and args.src:
         parser.error("pull reads from the device and does not accept --src.")
@@ -432,10 +434,8 @@ def main(argv=None):
         parser.error("--device and --src can only be combined for push.")
     if args.command in ("encode", "decode") and args.device:
         parser.error(f"{args.command} does not use a USB device.")
-    if args.command == "decode" and not args.src:
-        parser.error("decode requires an input file.")
-    if args.command == "encode" and not args.src:
-        parser.error("encode requires --src.")
+    if args.command in ("encode", "decode") and not args.src:
+        parser.error(f"{args.command} requires an input file.")
     try:
         if args.command == "pull":
             pull_settings(args)

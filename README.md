@@ -149,10 +149,10 @@ Whenever a command writes a binary `.sayobak` file, it also writes a same-name `
 
 ```sh
 ./osikiri decode original.sayobak --dest out
-./osikiri encode --src out/2026-11-23-12-00-00.json --dest out
+./osikiri encode out/2026-11-23-12-00-00.json --dest out
 ```
 
-Pass the source file directly to `decode` or specify it with `--src`.
+Pass the source file directly to `encode` or `decode`, or specify it with `--src`.
 
 Each `keys[].id` identifies the key for all its layers. Each `lighting` object contains only `color` and `mode`. Edit `keys[].layers[].binding` in `MODE:P0:P1:P2:P3` hexadecimal format and `lighting.color` or `lighting.mode` for RGB and trigger settings.
 

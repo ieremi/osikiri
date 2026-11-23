@@ -149,10 +149,10 @@ JSONの `lighting.mode` は点灯トリガーです。RGB色は `lighting.color`
 
 ```sh
 ./osikiri decode original.sayobak --dest out
-./osikiri encode --src out/2026-11-23-12-00-00.json --dest out
+./osikiri encode out/2026-11-23-12-00-00.json --dest out
 ```
 
-`decode` の入力ファイルは直接指定するか、`--src` で指定できます。
+`encode` と `decode` の入力ファイルは直接指定するか、`--src` で指定できます。
 
 `keys[].id` が、そのキーの全レイヤーに共通するIDです。`lighting` オブジェクトには `color` と `mode` が入ります。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。RGBと点灯トリガーは `lighting.color` と `lighting.mode` で指定します。
 
