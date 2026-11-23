@@ -2,47 +2,64 @@
 
 [English](README.md)
 
-Linux の `hidraw` を使い、旧 HID 設定プロトコル（Report ID `0x02`、Usage Page `0xFF00`）を話す SayoDevice のキー割り当てを読み書きする Python 3 CLI です。USB 接続と対象の `/dev/hidrawN` への読み書き権限が必要です。Python の追加パッケージは不要です。
+24キーのSayoDevice向けPython 3 CLIです。USB接続または `.sayobak` バックアップからキー割り当てを読み書きでき、バックアップ内のRGB照明も設定できます。追加のPythonパッケージは不要です。
+
+## USBで接続する
+
+USB接続にはLinuxの `hidraw` と旧HID設定プロトコル（Report ID `0x02`、Usage Page `0xFF00`）を使います。対象の `/dev/hidrawN` への読み書き権限が必要です。
 
 ```sh
 python3 sayo24.py list
 python3 sayo24.py --device /dev/hidrawN read
 ```
 
-`hidrawN` は一覧に表示されたパスに置き換えます。旧設定インターフェースが1つなら `--device` は省略できます。`read` は本体のキー番号順に24キーを表示します。物理配置と番号の対応は機種やファームウェアに依存します。
+`list` が表示したデバイスパスを指定します。旧設定インターフェースが1つなら `--device` を省略できます。`8089:0008` のLeftとRightは、それぞれのパスで選択します。再接続するとデバイス番号が変わることがあります。
+
+`read` は本体のキー番号順に24キーを表示します。キー番号と物理位置の対応は機種やファームウェアに依存します。
+
+## キー割り当てを変更する
 
 ```sh
 # キー2のレイヤー1の割り当てをキー1へコピー
-python3 sayo24.py set 1 --copy-from 2 --layer 1
+python3 sayo24.py --device /dev/hidrawN set 1 --copy-from 2 --layer 1
 
-# 同じ設定を本体の不揮発メモリーに保存
-python3 sayo24.py set 1 --copy-from 2 --layer 1 --save
+# キー7のショートカットをプレビュー
+python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --dry-run
+
+# ショートカットを適用して本体に保存
+python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --save
 ```
 
-`read` の各レイヤーはモードと4個のパラメーターを10進数で表示します。既知の割り当てを直接入力する場合、`set 1 --binding MODE:P0:P1:P2:P3` に16進のバイト値を指定します。値の意味はファームウェアに依存します。変更時は全24キーを読み取った後、指定したキーとレイヤーを編集し、読み戻しが一致した場合にのみ `--save` を実行します。保存コマンドは本体全体の現在の設定を保存します。
+`--shortcut` では英数字、F1〜F24、矢印キー、Enterなどの一般的なキーを指定できます。修飾キーにはCtrl、Shift、Alt、Gui（Windows / Command）を使います。右側の修飾キーには `RCtrl` のように `R` を付けます。
 
-`8089:0008` の Left / Right 両方で各24キー・5レイヤーの読み取りを確認し、実機で変更プレビューも確認しました。書き込みと保存は模擬HIDで検証しました。設定インターフェースが Report ID `0x21` のみの場合は一覧で識別できます。キー編集には `0x02` の設定インターフェースが必要です。
+`read` は各レイヤーのモード1バイトとパラメーター4バイトを10進数で表示します。既知の割り当てを直接入力するには、`set 1 --binding MODE:P0:P1:P2:P3` に16進数のバイト値を指定します。値の意味はファームウェアに依存します。
 
-- [参照の sayodevice-controller（6キー機のRGB、Report ID 0x21）](https://github.com/kennedn/sayodevice-controller/blob/main/README.md)
-- [旧HID通信の実装元 Sayobot/Sayo_CLI](https://github.com/Sayobot/Sayo_CLI/blob/main/o2_protocol.cpp)
+ツールは編集前に全24キーを読み取ります。変更を書き込んだ場合は、対象キーの設定を読み戻して結果を確認してから `--save` を実行します。保存すると、本体の現在の設定が不揮発メモリーに記録されます。
 
-一般的なキー名で指定する場合は `--shortcut` を使います。英数字、F1–F24、矢印キー、Enter などに対応します。修飾キーは Ctrl、Shift、Alt、Gui（Windows / Command キー）です。右側の修飾キーは RCtrl などの名前で指定できます。
+## 互換性
 
-```sh
-# 変更内容をプレビュー
-python3 sayo24.py --device /dev/hidraw0 set 7 --shortcut Ctrl+Shift+F13 --dry-run
+`8089:0008` のLeftとRightの両方で、全24キー・5レイヤーの読み取りと、変更内容のプレビューを確認しました。書き込みと保存は模擬HIDで検証しました。Report ID `0x21` がある場合は `list` に表示されます。キー編集には旧設定インターフェース `0x02` が必要です。
 
-# 本体に適用して保存
-python3 sayo24.py --device /dev/hidraw0 set 7 --shortcut Ctrl+Shift+F13 --save
-```
+- [sayodevice-controller（Report ID 0x21を使う6キーSayoDevice用RGBコントローラー）](https://github.com/kennedn/sayodevice-controller/blob/main/README.md)
+- [Sayobot Sayo_CLIの旧HID実装](https://github.com/Sayobot/Sayo_CLI/blob/main/o2_protocol.cpp)
 
-この環境で認識された `8089:0008` の Left / Right は、それぞれ個別に指定します。番号は接続のたびに変わる可能性があります。
-
-## .sayobak バックアップの編集
+## .sayobak バックアップを編集する
 
 ```sh
 python3 sayo24.py --backup original.sayobak read
 python3 sayo24.py --backup original.sayobak set 7 --shortcut Ctrl+Shift+F13 --output edited.sayobak
 ```
 
-Sayo Device Backup File 1.0 のサンプルで確認した24キー・5レイヤーの形式を、実機への接続なしで編集できます。変更した割り当て以外のバイトは保持され、RGB設定も引き継がれます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も使えます。公式ツールでの編集済みファイルの復元は未確認です。
+Sayo Device Backup File 1.0のサンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
+
+## バックアップのRGB照明を設定する
+
+```sh
+python3 sayo24.py --backup original.sayobak read-light --layer 2
+python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
+python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --output edited.sayobak
+```
+
+キー番号は1〜24で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドはバックアップをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
+
+どちらのコマンドでも `--layer 1` から `--layer 5` でバックアップの照明スロットを指定できます。省略時はレイヤー1です。レイヤー2〜5の実機での動作は未確認です。

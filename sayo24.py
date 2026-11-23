@@ -6,6 +6,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import select
 import struct
 import sys
@@ -26,6 +27,9 @@ BACKUP_RECORD_START = 0x69
 BACKUP_RECORD = struct.Struct("<BBI")
 BACKUP_LAYER_SIZE = 8
 BACKUP_KEY_COMMAND = 0x10
+BACKUP_LIGHT_COMMAND = 0x11
+BACKUP_LIGHT_RGB_OFFSET = 20
+BACKUP_LIGHT_MODE_OFFSET = 17
 KEY_CODES = {
     **{chr(65 + i): 4 + i for i in range(26)},
     **{key: 30 + i for i, key in enumerate("1234567890")},
@@ -107,6 +111,7 @@ class Backup:
             raise ValueError("対応する Sayo Device Backup File 1.0 ではありません。")
 
         self.keys = {}
+        self.lights = {}
         offset = BACKUP_RECORD_START
         while offset < end:
             if end - offset < BACKUP_RECORD.size:
@@ -120,6 +125,10 @@ class Backup:
                 if index in self.keys or size != HEADER_SIZE + MAX_LAYERS * BACKUP_LAYER_SIZE:
                     raise ValueError("バックアップのキー設定レコードが一致しません。")
                 self.keys[index] = payload + HEADER_SIZE
+            elif command == BACKUP_LIGHT_COMMAND:
+                if index in self.lights or size != 56:
+                    raise ValueError("バックアップの照明レコードが一致しません。")
+                self.lights[index] = payload
         if self.keys.keys() != set(range(KEY_COUNT)):
             raise ValueError("バックアップに24キー分の設定がありません。")
 
@@ -146,6 +155,25 @@ class Backup:
             temporary = Path(directory) / "backup"
             temporary.write_bytes(self.data)
             os.link(temporary, path)
+
+    def lighting(self, indices, layer, color=None, mode=None):
+        if any(index not in self.lights for index in indices):
+            raise ValueError("指定したキーの照明レコードがありません。")
+        result = []
+        for index in indices:
+            payload = self.lights[index] + (layer - 1) * BACKUP_LAYER_SIZE
+            rgb = payload + BACKUP_LIGHT_RGB_OFFSET
+            mode_offset = payload + BACKUP_LIGHT_MODE_OFFSET
+            if color is not None:
+                self.data[rgb:rgb + 3] = color
+            if mode is not None:
+                self.data[mode_offset] = mode
+            result.append({
+                "key": index + 1,
+                "color": "#" + self.data[rgb:rgb + 3].hex(),
+                "mode": self.data[mode_offset],
+            })
+        return result
 
 
 @contextmanager
@@ -206,6 +234,12 @@ def parse_shortcut(value):
         raise argparse.ArgumentTypeError(f"未対応のキー名: {exc.args[0]}") from exc
 
 
+def parse_color(value):
+    if not re.fullmatch(r"#?[0-9a-fA-F]{6}", value):
+        raise argparse.ArgumentTypeError("色を RRGGBB 形式で指定してください。")
+    return bytes.fromhex(value.removeprefix("#"))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     target = parser.add_mutually_exclusive_group()
@@ -214,6 +248,18 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="SayoDeviceのHID一覧")
     commands.add_parser("read", help="24キー分の割り当てをJSONで表示")
+    read_light = commands.add_parser("read-light", help="バックアップの24キー分のRGB照明を表示")
+    light = commands.add_parser("set-light", help="バックアップのRGB照明を変更")
+    light.add_argument("key", choices=[str(key) for key in range(1, KEY_COUNT + 1)] + ["all"],
+                       metavar="KEY|all")
+    light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB")
+    light.add_argument("--mode", choices=("static", "held"), help="常時点灯または押下時点灯")
+    for lighting_command in (read_light, light):
+        lighting_command.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1),
+                                      default=1, help="照明レイヤー (既定: 1)")
+    light_destination = light.add_mutually_exclusive_group(required=True)
+    light_destination.add_argument("--output", type=Path, help="新規 .sayobak ファイルの出力先")
+    light_destination.add_argument("--dry-run", action="store_true", help="変更後の照明を表示")
     edit = commands.add_parser("set", help="1キーの1レイヤーを変更")
     edit.add_argument("key", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY")
     edit.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1), default=1)
@@ -227,7 +273,9 @@ def main(argv=None):
     destination.add_argument("--output", type=Path, help="新規 .sayobak ファイルの出力先")
     args = parser.parse_args(argv)
     if args.command == "list" and args.backup:
-        parser.error("--backup には read または set を指定してください。")
+        parser.error("list に --backup は指定できません。")
+    if args.command in ("read-light", "set-light") and not args.backup:
+        parser.error("照明コマンドには --backup が必要です。")
     if args.command == "set":
         if args.dry_run and (args.save or args.output):
             parser.error("--dry-run と --save / --output は同時に指定できません。")
@@ -237,6 +285,18 @@ def main(argv=None):
             parser.error("--output には --backup が必要です。")
 
     try:
+        if args.command == "read-light":
+            print(json.dumps(Backup(args.backup).lighting(range(KEY_COUNT), args.layer), indent=2))
+            return 0
+        if args.command == "set-light":
+            backup = Backup(args.backup)
+            indices = range(KEY_COUNT) if args.key == "all" else [int(args.key) - 1]
+            mode = {"static": 0, "held": 1}.get(args.mode)
+            result = backup.lighting(indices, args.layer, args.color, mode)
+            if args.output:
+                backup.export(args.output)
+            print(json.dumps(result, indent=2))
+            return 0
         if args.command == "list":
             for node, pid, name, desc in devices():
                 reports = [f"0x{rid:02x}" for rid in (2, 0x21) if bytes((0x85, rid)) in desc]

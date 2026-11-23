@@ -2,7 +2,11 @@
 
 [日本語](README-jp.md)
 
-A Python 3 CLI for reading and editing key bindings on a 24-key SayoDevice through Linux `hidraw`. It uses the legacy HID configuration protocol (Report ID `0x02`, Usage Page `0xFF00`). You need a USB connection and read/write access to the corresponding `/dev/hidrawN` node. No additional Python packages are required.
+A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` backup, and configures RGB lighting in backups. No additional Python packages are required.
+
+## Connect over USB
+
+USB access uses Linux `hidraw` and the legacy HID configuration protocol (Report ID `0x02`, Usage Page `0xFF00`). You need read/write access to the corresponding `/dev/hidrawN` node.
 
 ```sh
 python3 sayo24.py list
@@ -47,3 +51,15 @@ python3 sayo24.py --backup original.sayobak set 7 --shortcut Ctrl+Shift+F13 --ou
 ```
 
 This works offline with the 24-key, five-layer layout verified in a Sayo Device Backup File 1.0 sample. The output preserves all bytes outside the edited binding, including RGB settings. Use a new output path. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
+
+## Configure backup lighting
+
+```sh
+python3 sayo24.py --backup original.sayobak read-light --layer 2
+python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
+python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --output edited.sayobak
+```
+
+Use a key number from 1 to 24 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the backup file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
+
+Use `--layer 1` through `--layer 5` to select a backup lighting slot for either command. Both commands default to layer 1. On-device behavior for layers 2–5 has yet to be verified.
