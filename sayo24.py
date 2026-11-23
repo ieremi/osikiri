@@ -14,13 +14,12 @@ import struct
 import sys
 import tempfile
 import time
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 KEY_COUNT = 24
 REPORT_SIZE = 64
 REPORT_ID = 2
-KEY_MAP = 0x16
 HEADER_SIZE = 16
 LAYER_SIZE = 6
 MAX_LAYERS = 5
@@ -38,19 +37,6 @@ SAYOBAK_RECORD_SIZE = HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE
 V2_REPORT_ID = 0x21
 V2_HEADER = struct.Struct("<BBHHBB")
 V2_WORDS = struct.Struct("<32H")
-KEY_CODES = {
-    **{chr(65 + i): 4 + i for i in range(26)},
-    **{key: 30 + i for i, key in enumerate("1234567890")},
-    **{f"F{i}": 57 + i for i in range(1, 13)},
-    **{f"F{i}": 91 + i for i in range(13, 25)},
-    "NONE": 0, "ENTER": 40, "ESC": 41, "BACKSPACE": 42, "TAB": 43,
-    "SPACE": 44, "DELETE": 76, "RIGHT": 79, "LEFT": 80, "DOWN": 81, "UP": 82,
-}
-MODIFIERS = {
-    name: 1 << bit for bit, name in enumerate(
-        ("CTRL", "SHIFT", "ALT", "GUI", "RCTRL", "RSHIFT", "RALT", "RGUI")
-    )
-}
 
 
 def devices():
@@ -138,19 +124,6 @@ class Device:
         if reply[1]:
             raise ValueError(f"Device rejected command 0x{command:02x} (status 0x{reply[1]:02x}).")
         return reply[3:3 + reply[2]]
-
-    def read_key(self, index):
-        payload = self.exchange(KEY_MAP, bytes((0, index)))
-        extra = len(payload) - HEADER_SIZE
-        if (extra not in range(LAYER_SIZE, (MAX_LAYERS + 1) * LAYER_SIZE, LAYER_SIZE)
-                or payload[1] != index):
-            raise ValueError(f"Unexpected response format for key {index}.")
-        return payload
-
-    def write_key(self, index, payload):
-        self.exchange(KEY_MAP, bytes((1,)) + payload[1:])
-        if self.read_key(index)[HEADER_SIZE:] != payload[HEADER_SIZE:]:
-            raise ValueError("The binding read back from the device differs from the requested binding.")
 
     def save(self):
         self.exchange(4, bytes.fromhex("72 96"), timeout=2)
@@ -287,18 +260,6 @@ class SayoFile:
     def export(self, directory, *, prefix=""):
         write_output(directory, self.to_text(), self.data, prefix=prefix)
 
-    def summary(self):
-        rows = ["Layer  Key ID  Binding (hex)   RGB      Light trigger"]
-        keys = [self.read_key(index) for index in range(KEY_COUNT)]
-        for layer in range(MAX_LAYERS):
-            for index, key in enumerate(keys):
-                values = binding(key, layer).hex(":").upper()
-                light = self.lighting((index,), layer)[0] if index in self.lights else None
-                color = light["color"].upper() if light else "-"
-                trigger = str(light["mode"]) if light else "-"
-                rows.append(f"{layer:>5}  {index:>6}  {values}  {color:<7}  {trigger:>13}")
-        return "\n".join(rows)
-
     def device_records(self):
         if self.lights.keys() != self.keys.keys():
             raise ValueError("Synchronization requires one lighting record per key.")
@@ -331,7 +292,7 @@ class SayoFile:
 def pull_settings(args):
     candidates = configuration_interfaces(args.device, v2=True)
     if not candidates:
-        raise ValueError("No matching HID v2 configuration interface. Run list to see available devices.")
+        raise ValueError("No matching HID v2 configuration interface.")
     for path, name in candidates:
         print(f"Reading {name} ({path})", file=sys.stderr)
         data = bytearray(SAYOBAK_MAGIC)
@@ -362,11 +323,12 @@ def push_settings(args):
                 device.record(command, index, desired)
                 if device.record(command, index) != desired:
                     raise ValueError(f"Device record readback differs for key ID {index}.")
-            if args.save and changes:
-                device.save()
+            device.save()
     for command, index, _, _ in changes:
         print(f"Key ID {index}: {'binding' if command == SAYOBAK_KEY_COMMAND else 'lighting'}")
     print(f"{len(changes)} {'records would change' if args.dry_run else 'records changed'}.")
+    if not args.dry_run:
+        print("Settings saved to nonvolatile memory.")
 
 def configuration_interfaces(path, *, v2=False):
     usage_page, report = (b"\x06\x11\xff", b"\x85\x21") if v2 else (b"\x06\x00\xff", b"\x85\x02")
@@ -380,7 +342,7 @@ def configuration_interfaces(path, *, v2=False):
 def open_device(path):
     candidates = configuration_interfaces(path)
     if len(candidates) != 1:
-        raise ValueError("Could not select a single legacy HID configuration interface. Run list to see available devices.")
+        raise ValueError("Could not select a single legacy HID configuration interface. Use --device to select the HID path.")
     return open_interface(candidates[0][0])
 
 
@@ -406,16 +368,6 @@ def binding(payload, layer):
     return payload[offset:offset + 1] + payload[offset + 2:offset + LAYER_SIZE]
 
 
-def describe(payload):
-    return {
-        "key": payload[1],
-        "layers": [
-            list(binding(payload, layer))
-            for layer in range((len(payload) - HEADER_SIZE) // LAYER_SIZE)
-        ],
-    }
-
-
 def parse_binding(value):
     try:
         result = bytes(int(part, 16) for part in value.split(":"))
@@ -424,15 +376,6 @@ def parse_binding(value):
     except ValueError:
         pass
     raise argparse.ArgumentTypeError("Enter five hexadecimal bytes separated by colons.")
-
-
-def parse_shortcut(value):
-    *modifiers, key = value.upper().split("+")
-    try:
-        mask = sum(MODIFIERS[modifier] for modifier in set(modifiers))
-        return bytes((0, mask, KEY_CODES[key], 0, 0))
-    except KeyError as exc:
-        raise argparse.ArgumentTypeError(f"Unsupported key name: {exc.args[0]}") from exc
 
 
 def parse_color(value):
@@ -446,16 +389,6 @@ def main(argv=None):
     parser.add_argument("--device", type=Path, help="Target /dev/hidrawN device")
     parser.add_argument("--src", type=Path, help="Input .sayobak configuration file")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("list", help="List SayoDevice HID interfaces",
-                        description="Show detected HID paths, USB IDs, and configuration report IDs.")
-    commands.add_parser("read", help="Print bindings for all 24 keys as JSON",
-                        description="Read bindings directly from a USB device.",
-                        epilog="Example: ./osikiri read --device /dev/hidrawN")
-    commands.add_parser(
-        "show", help="Show key bindings and RGB lighting for every layer",
-        description="Display the bindings and lighting in a .sayobak file.",
-        epilog="Example: ./osikiri show --src settings.sayobak",
-    )
     pull = commands.add_parser(
         "pull", help="Read device bindings and lighting into a file pair",
         description="Read all connected compatible devices unless --device selects one.",
@@ -464,64 +397,20 @@ def main(argv=None):
     pull.add_argument("device_path", nargs="?", type=Path, metavar="DEVICE",
                       help="Target /dev/hidrawN device")
     pull.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
-    push = commands.add_parser("push", help="Apply bindings and lighting from a .sayobak file")
-    push_action = push.add_mutually_exclusive_group(required=True)
-    push_action.add_argument("--dry-run", action="store_true", help="List records that would change")
-    push_action.add_argument("--apply", action="store_true", help="Write and verify changed records")
-    push.add_argument("--save", action="store_true", help="Save applied changes to nonvolatile memory")
+    push = commands.add_parser("push", help="Apply and save bindings and lighting from a .sayobak file")
+    push.add_argument("--dry-run", action="store_true", help="List records that would change without writing")
     encode = commands.add_parser("encode", help="Convert editable JSON to a .sayobak file pair")
     encode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
     decode = commands.add_parser("decode", help="Convert a .sayobak file to editable JSON")
     decode.add_argument("source_path", nargs="?", type=Path, metavar="FILE",
                         help="Input .sayobak configuration file")
     decode.add_argument("--dest", type=Path, default=OUTPUT_DIR, help="Output directory (default: out)")
-    read_light = commands.add_parser(
-        "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
-        description="Read lighting for one layer in a .sayobak file.",
-        epilog="Example: ./osikiri read-light --src settings.sayobak --layer 1",
-    )
-    light = commands.add_parser(
-        "set-light", help="Edit RGB lighting in the configuration file",
-        description="Change lighting for one layer in a .sayobak file.",
-        epilog="Example: ./osikiri set-light --src settings.sayobak all --color 00BFFF --dry-run",
-    )
-    light.add_argument("key", choices=[str(key) for key in range(KEY_COUNT)] + ["all"],
-                       metavar="KEY|all", help="Key ID (0-23), or all keys")
-    light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB",
-                       help="Six hexadecimal RGB digits, optionally prefixed with #")
-    light.add_argument("--mode", choices=("static", "held"), help="Light continuously or only while pressed")
-    for lighting_command in (read_light, light):
-        lighting_command.add_argument("--layer", type=int, choices=range(MAX_LAYERS),
-                                      default=0, help="Lighting layer (default: 0)")
-    light_destination = light.add_mutually_exclusive_group()
-    light_destination.add_argument("--dest", type=Path, help="Output directory (default: out)")
-    light_destination.add_argument("--dry-run", action="store_true", help="Preview the lighting changes")
-    edit = commands.add_parser(
-        "set", help="Edit the binding for one key on one layer",
-        description="Edit a USB device or use --src to edit a .sayobak file.",
-        epilog="Example: ./osikiri set --src settings.sayobak 6 --shortcut Ctrl+Shift+F13 --dry-run",
-    )
-    edit.add_argument("key", type=int, choices=range(KEY_COUNT), metavar="KEY",
-                      help="Key ID (0-23)")
-    edit.add_argument("--layer", type=int, choices=range(MAX_LAYERS), default=0,
-                      help="Binding layer (default: 0)")
-    source = edit.add_mutually_exclusive_group(required=True)
-    source.add_argument("--copy-from", type=int, choices=range(KEY_COUNT), metavar="KEY",
-                        help="Copy another key's binding from the selected layer")
-    source.add_argument("--binding", type=parse_binding, metavar="MODE:P0:P1:P2:P3",
-                        help="Enter the binding as five hexadecimal bytes")
-    source.add_argument("--shortcut", type=parse_shortcut, metavar="CTRL+SHIFT+F13",
-                        help="Assign a key with optional modifiers")
-    edit.add_argument("--dry-run", action="store_true", help="Preview the binding change")
-    destination = edit.add_mutually_exclusive_group()
-    destination.add_argument("--save", action="store_true", help="Save to the device nonvolatile memory")
-    destination.add_argument("--dest", type=Path, help="Output directory for file edits (default: out)")
     # Suppressed defaults keep values supplied before the subcommand.
-    for command in ("read", "set", "pull", "push"):
+    for command in ("pull", "push"):
         commands.choices[command].add_argument(
             "--device", type=Path, default=argparse.SUPPRESS, help="Target /dev/hidrawN device",
         )
-    for command in ("show", "read-light", "set-light", "set", "push", "decode", "encode"):
+    for command in ("push", "decode", "encode"):
         commands.choices[command].add_argument(
             "--src", type=Path, default=argparse.SUPPRESS, help="Input configuration file",
         )
@@ -539,8 +428,6 @@ def main(argv=None):
     if args.command == "push":
         if not args.src:
             parser.error("push requires --src.")
-        if args.save and not args.apply:
-            parser.error("--save requires --apply.")
     elif args.device and args.src:
         parser.error("--device and --src can only be combined for push.")
     if args.command in ("encode", "decode") and args.device:
@@ -549,22 +436,6 @@ def main(argv=None):
         parser.error("decode requires an input file.")
     if args.command == "encode" and not args.src:
         parser.error("encode requires --src.")
-    if args.command == "list" and args.src:
-        parser.error("list does not accept --src.")
-    if args.command == "read" and args.src:
-        parser.error("Use show with --src to display a configuration file.")
-    if args.command == "show" and not args.src:
-        parser.error("show requires --src.")
-    if args.command in ("read-light", "set-light") and not args.src:
-        parser.error("Lighting commands require --src.")
-    if args.command == "set":
-        if args.dry_run and (args.save or args.dest):
-            parser.error("--dry-run cannot be combined with --save or --dest.")
-        if args.src and args.save:
-            parser.error("--save is only available when editing a USB device.")
-        if args.dest and not args.src:
-            parser.error("--dest requires --src.")
-
     try:
         if args.command == "pull":
             pull_settings(args)
@@ -578,51 +449,6 @@ def main(argv=None):
         if args.command == "decode":
             write_output(args.dest, SayoFile.load(args.src).to_text())
             return 0
-        if args.command == "show":
-            print(SayoFile.load(args.src).summary())
-            return 0
-        if args.command == "read-light":
-            print(json.dumps(SayoFile.load(args.src).lighting(range(KEY_COUNT), args.layer), indent=2))
-            return 0
-        if args.command == "set-light":
-            settings = SayoFile.load(args.src)
-            indices = range(KEY_COUNT) if args.key == "all" else [int(args.key)]
-            mode = {"static": 0, "held": 1}.get(args.mode)
-            result = settings.lighting(indices, args.layer, args.color, mode)
-            if not args.dry_run:
-                settings.export(args.dest or OUTPUT_DIR)
-            print(json.dumps(result, indent=2))
-            return 0
-        if args.command == "list":
-            for node, pid, name, desc in devices():
-                reports = [f"0x{rid:02x}" for rid in (2, 0x21) if bytes((0x85, rid)) in desc]
-                print(f"{node} 8089:{pid:04x} {name} (report {', '.join(reports) or '-'})")
-            return 0
-
-        target = nullcontext(SayoFile.load(args.src)) if args.src else open_device(args.device)
-        with target as device:
-            keys = [device.read_key(index) for index in range(KEY_COUNT)]
-            if args.command == "read":
-                print(json.dumps([describe(key) for key in keys], indent=2))
-                return 0
-
-            index = args.key
-            current = keys[index]
-            offset = layer_offset(current, args.layer)
-            new_binding = args.binding or args.shortcut
-            if args.copy_from is not None:
-                new_binding = binding(keys[args.copy_from], args.layer)
-            updated = bytearray(current)
-            updated[offset] = new_binding[0]
-            updated[offset + 2:offset + LAYER_SIZE] = new_binding[1:]
-            if not args.dry_run and updated != current:
-                device.write_key(index, bytes(updated))
-            if args.save:
-                device.save()
-            if args.src and not args.dry_run:
-                device.export(args.dest or OUTPUT_DIR)
-            print(json.dumps(describe(updated)))
-        return 0
     except (OSError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
