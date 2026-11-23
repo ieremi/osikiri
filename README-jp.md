@@ -132,9 +132,9 @@ JSONの `lighting.trigger` は点灯トリガーです。Light Modeの番号は 
 | `1` | キーを押している間だけ点灯 |
 | `2` | キーを離すと点灯（公式ツールでは **Release Light Up**） |
 
-Indicator（`effect: 1`）では、公式ツールに **Indicator** の選択欄が表示されます。この効果で確認済みの値は、`trigger: 1` が **NumLock**、`trigger: 2` が **CapsLock**、`trigger: 4` が **ScrollLock** です。
+Indicator（`effect: 1`）では、公式ツールに **Indicator** の選択欄が表示されます。この効果で確認済みの値は、`trigger: 1` が **NumLock**、`trigger: 2` が **CapsLock**、`trigger: 4` が **ScrollLock**、`trigger: 8` が **ComposeLock**、`trigger: 16` が **KanaLock** です。
 
-選択欄には **ComposeLock** と **KanaLock** も表示されます。対応する `trigger` 値は未確認です。
+`trigger: 3` では、公式ツールの選択欄にプレースホルダーの **Indicator** が表示されました。実機での動作は未確認です。
 
 Breathingを4xで使う場合の `lighting` の例です。
 

@@ -132,9 +132,9 @@ The JSON field `lighting.trigger` is the lighting trigger. Set the Light Mode co
 | `1` | While the key is pressed |
 | `2` | On release (shown as **Release Light Up** in the official configurator) |
 
-With Indicator (`effect: 1`), the official configurator shows an **Indicator** selector. For this effect, the confirmed values are `trigger: 1` for **NumLock**, `trigger: 2` for **CapsLock**, and `trigger: 4` for **ScrollLock**.
+With Indicator (`effect: 1`), the official configurator shows an **Indicator** selector. For this effect, the confirmed values are `trigger: 1` for **NumLock**, `trigger: 2` for **CapsLock**, `trigger: 4` for **ScrollLock**, `trigger: 8` for **ComposeLock**, and `trigger: 16` for **KanaLock**.
 
-The selector also lists **ComposeLock** and **KanaLock**. Their `trigger` values are unverified.
+With `trigger: 3`, the official configurator showed the placeholder **Indicator** in the selector. Its behavior on the device is unverified.
 
 Example `lighting` object for Breathing at 4x:
 
