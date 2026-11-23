@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect and edit 24-key SayoDevice bindings over HID or in a backup file."""
+"""Inspect and edit 24-key SayoDevice bindings over HID or in a .sayobak configuration file."""
 
 import argparse
 import fcntl
@@ -22,14 +22,14 @@ HEADER_SIZE = 16
 LAYER_SIZE = 6
 MAX_LAYERS = 5
 SYSFS = Path("/sys/class/hidraw")
-BACKUP_MAGIC = b"Sayo Device Backup File 1.0".ljust(64, b"\0")
-BACKUP_RECORD_START = 0x69
-BACKUP_RECORD = struct.Struct("<BBI")
-BACKUP_LAYER_SIZE = 8
-BACKUP_KEY_COMMAND = 0x10
-BACKUP_LIGHT_COMMAND = 0x11
-BACKUP_LIGHT_RGB_OFFSET = 20
-BACKUP_LIGHT_MODE_OFFSET = 17
+SAYOBAK_MAGIC = b"Sayo Device Backup File 1.0".ljust(64, b"\0")
+SAYOBAK_RECORD_START = 0x69
+SAYOBAK_RECORD = struct.Struct("<BBI")
+SAYOBAK_LAYER_SIZE = 8
+SAYOBAK_KEY_COMMAND = 0x10
+SAYOBAK_LIGHT_COMMAND = 0x11
+SAYOBAK_LIGHT_RGB_OFFSET = 20
+SAYOBAK_LIGHT_MODE_OFFSET = 17
 KEY_CODES = {
     **{chr(65 + i): 4 + i for i in range(26)},
     **{key: 30 + i for i, key in enumerate("1234567890")},
@@ -103,56 +103,56 @@ class Device:
         self.exchange(4, bytes.fromhex("72 96"), timeout=2)
 
 
-class Backup:
+class SayoFile:
     def __init__(self, path):
         self.data = bytearray(path.read_bytes())
         end = len(self.data)
-        if not self.data.startswith(BACKUP_MAGIC) or end < BACKUP_RECORD_START:
-            raise ValueError("対応する Sayo Device Backup File 1.0 ではありません。")
+        if not self.data.startswith(SAYOBAK_MAGIC) or end < SAYOBAK_RECORD_START:
+            raise ValueError("対応する .sayobak 設定ファイル形式ではありません。")
 
         self.keys = {}
         self.lights = {}
-        offset = BACKUP_RECORD_START
+        offset = SAYOBAK_RECORD_START
         while offset < end:
-            if end - offset < BACKUP_RECORD.size:
-                raise ValueError("バックアップのレコードヘッダーが途中で切れています。")
-            command, index, size = BACKUP_RECORD.unpack_from(self.data, offset)
-            payload = offset + BACKUP_RECORD.size
+            if end - offset < SAYOBAK_RECORD.size:
+                raise ValueError("設定ファイルのレコードヘッダーが途中で切れています。")
+            command, index, size = SAYOBAK_RECORD.unpack_from(self.data, offset)
+            payload = offset + SAYOBAK_RECORD.size
             offset = payload + size
             if offset > end:
-                raise ValueError("バックアップのレコードが途中で切れています。")
-            if command == BACKUP_KEY_COMMAND:
-                if index in self.keys or size != HEADER_SIZE + MAX_LAYERS * BACKUP_LAYER_SIZE:
-                    raise ValueError("バックアップのキー設定レコードが一致しません。")
+                raise ValueError("設定ファイルのレコードが途中で切れています。")
+            if command == SAYOBAK_KEY_COMMAND:
+                if index in self.keys or size != HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE:
+                    raise ValueError("設定ファイルのキー設定レコードが一致しません。")
                 self.keys[index] = payload + HEADER_SIZE
-            elif command == BACKUP_LIGHT_COMMAND:
+            elif command == SAYOBAK_LIGHT_COMMAND:
                 if index in self.lights or size != 56:
-                    raise ValueError("バックアップの照明レコードが一致しません。")
+                    raise ValueError("設定ファイルの照明レコードが一致しません。")
                 self.lights[index] = payload
         if self.keys.keys() != set(range(KEY_COUNT)):
-            raise ValueError("バックアップに24キー分の設定がありません。")
+            raise ValueError("設定ファイルに24キー分の設定がありません。")
 
     def read_key(self, index):
-        # Convert to the CLI's legacy key layout. The backup stores three
+        # Convert to the CLI's legacy key layout. The file stores three
         # additional bytes between the mode and the four parameters.
         start = self.keys[index]
         payload = bytearray(HEADER_SIZE)
         payload[1] = index
-        for offset in range(start, start + MAX_LAYERS * BACKUP_LAYER_SIZE, BACKUP_LAYER_SIZE):
+        for offset in range(start, start + MAX_LAYERS * SAYOBAK_LAYER_SIZE, SAYOBAK_LAYER_SIZE):
             payload.extend((self.data[offset], 0))
             payload.extend(self.data[offset + 4:offset + 8])
         return bytes(payload)
 
     def write_key(self, index, payload):
         for layer in range(1, MAX_LAYERS + 1):
-            offset = self.keys[index] + (layer - 1) * BACKUP_LAYER_SIZE
+            offset = self.keys[index] + (layer - 1) * SAYOBAK_LAYER_SIZE
             values = binding(payload, layer)
             self.data[offset] = values[0]
             self.data[offset + 4:offset + 8] = values[1:]
 
     def export(self, path):
         with tempfile.TemporaryDirectory(dir=path.parent) as directory:
-            temporary = Path(directory) / "backup"
+            temporary = Path(directory) / "settings.sayobak"
             temporary.write_bytes(self.data)
             os.link(temporary, path)
 
@@ -161,9 +161,9 @@ class Backup:
             raise ValueError("指定したキーの照明レコードがありません。")
         result = []
         for index in indices:
-            payload = self.lights[index] + (layer - 1) * BACKUP_LAYER_SIZE
-            rgb = payload + BACKUP_LIGHT_RGB_OFFSET
-            mode_offset = payload + BACKUP_LIGHT_MODE_OFFSET
+            payload = self.lights[index] + (layer - 1) * SAYOBAK_LAYER_SIZE
+            rgb = payload + SAYOBAK_LIGHT_RGB_OFFSET
+            mode_offset = payload + SAYOBAK_LIGHT_MODE_OFFSET
             if color is not None:
                 self.data[rgb:rgb + 3] = color
             if mode is not None:
@@ -244,12 +244,12 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     target = parser.add_mutually_exclusive_group()
     target.add_argument("--device", type=Path, help="対象の /dev/hidrawN")
-    target.add_argument("--backup", type=Path, help="入力の .sayobak ファイル")
+    target.add_argument("--src", type=Path, help="入力の .sayobak ファイル")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="SayoDeviceのHID一覧")
     commands.add_parser("read", help="24キー分の割り当てをJSONで表示")
-    read_light = commands.add_parser("read-light", help="バックアップの24キー分のRGB照明を表示")
-    light = commands.add_parser("set-light", help="バックアップのRGB照明を変更")
+    read_light = commands.add_parser("read-light", help="設定ファイルの24キー分のRGB照明を表示")
+    light = commands.add_parser("set-light", help="設定ファイルのRGB照明を変更")
     light.add_argument("key", choices=[str(key) for key in range(1, KEY_COUNT + 1)] + ["all"],
                        metavar="KEY|all")
     light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB")
@@ -258,7 +258,7 @@ def main(argv=None):
         lighting_command.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1),
                                       default=1, help="照明レイヤー (既定: 1)")
     light_destination = light.add_mutually_exclusive_group(required=True)
-    light_destination.add_argument("--output", type=Path, help="新規 .sayobak ファイルの出力先")
+    light_destination.add_argument("--dest", type=Path, help="新規 .sayobak ファイルの出力先")
     light_destination.add_argument("--dry-run", action="store_true", help="変更後の照明を表示")
     edit = commands.add_parser("set", help="1キーの1レイヤーを変更")
     edit.add_argument("key", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY")
@@ -270,31 +270,31 @@ def main(argv=None):
     edit.add_argument("--dry-run", action="store_true", help="変更後の割り当てを表示")
     destination = edit.add_mutually_exclusive_group()
     destination.add_argument("--save", action="store_true", help="本体の不揮発メモリーに保存")
-    destination.add_argument("--output", type=Path, help="新規 .sayobak ファイルの出力先")
+    destination.add_argument("--dest", type=Path, help="新規 .sayobak ファイルの出力先")
     args = parser.parse_args(argv)
-    if args.command == "list" and args.backup:
-        parser.error("list に --backup は指定できません。")
-    if args.command in ("read-light", "set-light") and not args.backup:
-        parser.error("照明コマンドには --backup が必要です。")
+    if args.command == "list" and args.src:
+        parser.error("list に --src は指定できません。")
+    if args.command in ("read-light", "set-light") and not args.src:
+        parser.error("照明コマンドには --src が必要です。")
     if args.command == "set":
-        if args.dry_run and (args.save or args.output):
-            parser.error("--dry-run と --save / --output は同時に指定できません。")
-        if args.backup and (args.save or not (args.dry_run or args.output)):
-            parser.error("--backup での set には --output または --dry-run を指定してください。")
-        if args.output and not args.backup:
-            parser.error("--output には --backup が必要です。")
+        if args.dry_run and (args.save or args.dest):
+            parser.error("--dry-run と --save / --dest は同時に指定できません。")
+        if args.src and (args.save or not (args.dry_run or args.dest)):
+            parser.error("--src での set には --dest または --dry-run を指定してください。")
+        if args.dest and not args.src:
+            parser.error("--dest には --src が必要です。")
 
     try:
         if args.command == "read-light":
-            print(json.dumps(Backup(args.backup).lighting(range(KEY_COUNT), args.layer), indent=2))
+            print(json.dumps(SayoFile(args.src).lighting(range(KEY_COUNT), args.layer), indent=2))
             return 0
         if args.command == "set-light":
-            backup = Backup(args.backup)
+            settings = SayoFile(args.src)
             indices = range(KEY_COUNT) if args.key == "all" else [int(args.key) - 1]
             mode = {"static": 0, "held": 1}.get(args.mode)
-            result = backup.lighting(indices, args.layer, args.color, mode)
-            if args.output:
-                backup.export(args.output)
+            result = settings.lighting(indices, args.layer, args.color, mode)
+            if args.dest:
+                settings.export(args.dest)
             print(json.dumps(result, indent=2))
             return 0
         if args.command == "list":
@@ -303,7 +303,7 @@ def main(argv=None):
                 print(f"{node} 8089:{pid:04x} {name} (report {', '.join(reports) or '-'})")
             return 0
 
-        target = nullcontext(Backup(args.backup)) if args.backup else open_device(args.device)
+        target = nullcontext(SayoFile(args.src)) if args.src else open_device(args.device)
         with target as device:
             keys = [device.read_key(index) for index in range(KEY_COUNT)]
             if args.command == "read":
@@ -323,8 +323,8 @@ def main(argv=None):
                 device.write_key(index, bytes(updated))
             if args.save:
                 device.save()
-            if args.output:
-                device.export(args.output)
+            if args.dest:
+                device.export(args.dest)
             print(json.dumps(describe(updated)))
         return 0
     except (OSError, ValueError) as exc:

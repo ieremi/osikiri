@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-24キーのSayoDevice向けPython 3 CLIです。USB接続または `.sayobak` バックアップからキー割り当てを読み書きでき、バックアップ内のRGB照明も設定できます。追加のPythonパッケージは不要です。
+24キーのSayoDevice向けPython 3 CLIです。USB接続または `.sayobak` 設定ファイルからキー割り当てを読み書きでき、設定ファイル内のRGB照明も設定できます。追加のPythonパッケージは不要です。
 
 ## USBで接続する
 
@@ -43,23 +43,23 @@ python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --save
 - [sayodevice-controller（Report ID 0x21を使う6キーSayoDevice用RGBコントローラー）](https://github.com/kennedn/sayodevice-controller/blob/main/README.md)
 - [Sayobot Sayo_CLIの旧HID実装](https://github.com/Sayobot/Sayo_CLI/blob/main/o2_protocol.cpp)
 
-## .sayobak バックアップを編集する
+## .sayobak 設定ファイルを編集する
 
 ```sh
-python3 sayo24.py --backup original.sayobak read
-python3 sayo24.py --backup original.sayobak set 7 --shortcut Ctrl+Shift+F13 --output edited.sayobak
+python3 sayo24.py --src original.sayobak read
+python3 sayo24.py --src original.sayobak set 7 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
 ```
 
-Sayo Device Backup File 1.0のサンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
+形式バージョン1.0の .sayobak サンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
 
-## バックアップのRGB照明を設定する
+## 設定ファイルのRGB照明を設定する
 
 ```sh
-python3 sayo24.py --backup original.sayobak read-light --layer 2
-python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
-python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --output edited.sayobak
+python3 sayo24.py --src original.sayobak read-light --layer 2
+python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
+python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dest edited.sayobak
 ```
 
-キー番号は1〜24で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドはバックアップをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
+キー番号は1〜24で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドは設定ファイルをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
 
-どちらのコマンドでも `--layer 1` から `--layer 5` でバックアップの照明スロットを指定できます。省略時はレイヤー1です。レイヤー2〜5の実機での動作は未確認です。
+どちらのコマンドでも `--layer 1` から `--layer 5` で設定ファイルの照明スロットを指定できます。省略時はレイヤー1です。レイヤー2〜5の実機での動作は未確認です。

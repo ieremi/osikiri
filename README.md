@@ -2,7 +2,7 @@
 
 [日本語](README-jp.md)
 
-A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` backup, and configures RGB lighting in backups. No additional Python packages are required.
+A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` configuration file, and configures RGB lighting in configuration files. No additional Python packages are required.
 
 ## Connect over USB
 
@@ -43,23 +43,23 @@ Reading all 24 keys and five layers was verified on both `8089:0008` Left and Ri
 - [sayodevice-controller, an RGB controller for a six-key SayoDevice using Report ID 0x21](https://github.com/kennedn/sayodevice-controller/blob/main/README.md)
 - [Sayobot Sayo_CLI legacy HID implementation](https://github.com/Sayobot/Sayo_CLI/blob/main/o2_protocol.cpp)
 
-## Edit a .sayobak backup
+## Edit a .sayobak configuration file
 
 ```sh
-python3 sayo24.py --backup original.sayobak read
-python3 sayo24.py --backup original.sayobak set 7 --shortcut Ctrl+Shift+F13 --output edited.sayobak
+python3 sayo24.py --src original.sayobak read
+python3 sayo24.py --src original.sayobak set 7 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
 ```
 
-This works offline with the 24-key, five-layer layout verified in a Sayo Device Backup File 1.0 sample. The output preserves all bytes outside the edited binding, including RGB settings. Use a new output path. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
+This works offline with the 24-key, five-layer layout verified in a sample .sayobak file (format 1.0). The output preserves all bytes outside the edited binding, including RGB settings. Use a new output path. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
 
-## Configure backup lighting
+## Configure lighting in a .sayobak file
 
 ```sh
-python3 sayo24.py --backup original.sayobak read-light --layer 2
-python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
-python3 sayo24.py --backup original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --output edited.sayobak
+python3 sayo24.py --src original.sayobak read-light --layer 2
+python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
+python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dest edited.sayobak
 ```
 
-Use a key number from 1 to 24 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the backup file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
+Use a key number from 1 to 24 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the configuration file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
 
-Use `--layer 1` through `--layer 5` to select a backup lighting slot for either command. Both commands default to layer 1. On-device behavior for layers 2–5 has yet to be verified.
+Use `--layer 1` through `--layer 5` to select a lighting slot in the file for either command. Both commands default to layer 1. On-device behavior for layers 2–5 has yet to be verified.
