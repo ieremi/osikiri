@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect and edit a 24-key SayoDevice using the legacy HID protocol."""
+"""Inspect and edit 24-key SayoDevice bindings over HID or in a backup file."""
 
 import argparse
 import fcntl
@@ -7,9 +7,11 @@ import json
 import os
 from pathlib import Path
 import select
+import struct
 import sys
+import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 
 KEY_COUNT = 24
 REPORT_SIZE = 64
@@ -19,6 +21,11 @@ HEADER_SIZE = 16
 LAYER_SIZE = 6
 MAX_LAYERS = 5
 SYSFS = Path("/sys/class/hidraw")
+BACKUP_MAGIC = b"Sayo Device Backup File 1.0".ljust(64, b"\0")
+BACKUP_RECORD_START = 0x69
+BACKUP_RECORD = struct.Struct("<BBI")
+BACKUP_LAYER_SIZE = 8
+BACKUP_KEY_COMMAND = 0x10
 KEY_CODES = {
     **{chr(65 + i): 4 + i for i in range(26)},
     **{key: 30 + i for i, key in enumerate("1234567890")},
@@ -92,6 +99,55 @@ class Device:
         self.exchange(4, bytes.fromhex("72 96"), timeout=2)
 
 
+class Backup:
+    def __init__(self, path):
+        self.data = bytearray(path.read_bytes())
+        end = len(self.data)
+        if not self.data.startswith(BACKUP_MAGIC) or end < BACKUP_RECORD_START:
+            raise ValueError("対応する Sayo Device Backup File 1.0 ではありません。")
+
+        self.keys = {}
+        offset = BACKUP_RECORD_START
+        while offset < end:
+            if end - offset < BACKUP_RECORD.size:
+                raise ValueError("バックアップのレコードヘッダーが途中で切れています。")
+            command, index, size = BACKUP_RECORD.unpack_from(self.data, offset)
+            payload = offset + BACKUP_RECORD.size
+            offset = payload + size
+            if offset > end:
+                raise ValueError("バックアップのレコードが途中で切れています。")
+            if command == BACKUP_KEY_COMMAND:
+                if index in self.keys or size != HEADER_SIZE + MAX_LAYERS * BACKUP_LAYER_SIZE:
+                    raise ValueError("バックアップのキー設定レコードが一致しません。")
+                self.keys[index] = payload + HEADER_SIZE
+        if self.keys.keys() != set(range(KEY_COUNT)):
+            raise ValueError("バックアップに24キー分の設定がありません。")
+
+    def read_key(self, index):
+        # Convert to the CLI's legacy key layout. The backup stores three
+        # additional bytes between the mode and the four parameters.
+        start = self.keys[index]
+        payload = bytearray(HEADER_SIZE)
+        payload[1] = index
+        for offset in range(start, start + MAX_LAYERS * BACKUP_LAYER_SIZE, BACKUP_LAYER_SIZE):
+            payload.extend((self.data[offset], 0))
+            payload.extend(self.data[offset + 4:offset + 8])
+        return bytes(payload)
+
+    def write_key(self, index, payload):
+        for layer in range(1, MAX_LAYERS + 1):
+            offset = self.keys[index] + (layer - 1) * BACKUP_LAYER_SIZE
+            values = binding(payload, layer)
+            self.data[offset] = values[0]
+            self.data[offset + 4:offset + 8] = values[1:]
+
+    def export(self, path):
+        with tempfile.TemporaryDirectory(dir=path.parent) as directory:
+            temporary = Path(directory) / "backup"
+            temporary.write_bytes(self.data)
+            os.link(temporary, path)
+
+
 @contextmanager
 def open_device(path):
     candidates = [
@@ -152,7 +208,9 @@ def parse_shortcut(value):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--device", type=Path, help="対象の /dev/hidrawN")
+    target = parser.add_mutually_exclusive_group()
+    target.add_argument("--device", type=Path, help="対象の /dev/hidrawN")
+    target.add_argument("--backup", type=Path, help="入力の .sayobak ファイル")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="SayoDeviceのHID一覧")
     commands.add_parser("read", help="24キー分の割り当てをJSONで表示")
@@ -164,10 +222,19 @@ def main(argv=None):
     source.add_argument("--binding", type=parse_binding, metavar="MODE:P0:P1:P2:P3")
     source.add_argument("--shortcut", type=parse_shortcut, metavar="CTRL+SHIFT+F13")
     edit.add_argument("--dry-run", action="store_true", help="変更後の割り当てを表示")
-    edit.add_argument("--save", action="store_true", help="本体の不揮発メモリーに保存")
+    destination = edit.add_mutually_exclusive_group()
+    destination.add_argument("--save", action="store_true", help="本体の不揮発メモリーに保存")
+    destination.add_argument("--output", type=Path, help="新規 .sayobak ファイルの出力先")
     args = parser.parse_args(argv)
-    if args.command == "set" and args.dry_run and args.save:
-        parser.error("--dry-run と --save は同時に指定できません。")
+    if args.command == "list" and args.backup:
+        parser.error("--backup には read または set を指定してください。")
+    if args.command == "set":
+        if args.dry_run and (args.save or args.output):
+            parser.error("--dry-run と --save / --output は同時に指定できません。")
+        if args.backup and (args.save or not (args.dry_run or args.output)):
+            parser.error("--backup での set には --output または --dry-run を指定してください。")
+        if args.output and not args.backup:
+            parser.error("--output には --backup が必要です。")
 
     try:
         if args.command == "list":
@@ -176,7 +243,8 @@ def main(argv=None):
                 print(f"{node} 8089:{pid:04x} {name} (report {', '.join(reports) or '-'})")
             return 0
 
-        with open_device(args.device) as device:
+        target = nullcontext(Backup(args.backup)) if args.backup else open_device(args.device)
+        with target as device:
             keys = [device.read_key(index) for index in range(KEY_COUNT)]
             if args.command == "read":
                 print(json.dumps([describe(key) for key in keys], indent=2))
@@ -195,6 +263,8 @@ def main(argv=None):
                 device.write_key(index, bytes(updated))
             if args.save:
                 device.save()
+            if args.output:
+                device.export(args.output)
             print(json.dumps(describe(updated)))
         return 0
     except (OSError, ValueError) as exc:

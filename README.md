@@ -38,3 +38,12 @@ Reading all 24 keys and five layers was verified on both `8089:0008` Left and Ri
 
 - [sayodevice-controller, an RGB controller for a six-key SayoDevice using Report ID 0x21](https://github.com/kennedn/sayodevice-controller/blob/main/README.md)
 - [Sayobot Sayo_CLI legacy HID implementation](https://github.com/Sayobot/Sayo_CLI/blob/main/o2_protocol.cpp)
+
+## Edit a .sayobak backup
+
+```sh
+python3 sayo24.py --backup original.sayobak read
+python3 sayo24.py --backup original.sayobak set 7 --shortcut Ctrl+Shift+F13 --output edited.sayobak
+```
+
+This works offline with the 24-key, five-layer layout verified in a Sayo Device Backup File 1.0 sample. The output preserves all bytes outside the edited binding, including RGB settings. Use a new output path. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.

@@ -37,3 +37,12 @@ python3 sayo24.py --device /dev/hidraw0 set 7 --shortcut Ctrl+Shift+F13 --save
 ```
 
 この環境で認識された `8089:0008` の Left / Right は、それぞれ個別に指定します。番号は接続のたびに変わる可能性があります。
+
+## .sayobak バックアップの編集
+
+```sh
+python3 sayo24.py --backup original.sayobak read
+python3 sayo24.py --backup original.sayobak set 7 --shortcut Ctrl+Shift+F13 --output edited.sayobak
+```
+
+Sayo Device Backup File 1.0 のサンプルで確認した24キー・5レイヤーの形式を、実機への接続なしで編集できます。変更した割り当て以外のバイトは保持され、RGB設定も引き継がれます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も使えます。公式ツールでの編集済みファイルの復元は未確認です。
