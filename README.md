@@ -1,8 +1,10 @@
 # SayoDevice 24-Key Configuration Tool
 
-[日本語](README-jp.md)
+[Japanese](README-jp.md)
 
 A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` configuration file, and configures RGB lighting in configuration files. No additional Python packages are required. CLI help and error messages are in English.
+
+Osikiri takes its name from the Japanese place name Oshikiri (押切) and also alludes to pressing a key (キーを押す).
 
 ## Command help
 
