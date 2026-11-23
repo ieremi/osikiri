@@ -20,9 +20,9 @@ Osikiriという名前は、地名の「押切」と、キーを「押す」こ�
 サブコマンドを先に書き、その後にオプションを指定します。`--help` でコマンド一覧を表示できます。各コマンドのオプションを確認するには、コマンド名の後に `--help` を付けます。
 
 ```sh
-python3 sayo24.py --help
-python3 sayo24.py set --help
-python3 sayo24.py set-light --help
+./osikiri --help
+./osikiri set --help
+./osikiri set-light --help
 ```
 
 ## USBで接続する
@@ -30,8 +30,8 @@ python3 sayo24.py set-light --help
 USB接続にはLinuxの `hidraw` と旧HID設定プロトコル（Report ID `0x02`、Usage Page `0xFF00`）を使います。対象の `/dev/hidrawN` への読み書き権限が必要です。
 
 ```sh
-python3 sayo24.py list
-python3 sayo24.py read --device /dev/hidrawN
+./osikiri list
+./osikiri read --device /dev/hidrawN
 ```
 
 `list` が表示したデバイスパスを指定します。旧設定インターフェースが1つなら `--device` を省略できます。`8089:0008` のLeftとRightは、それぞれのパスで選択します。再接続するとデバイス番号が変わることがあります。
@@ -61,13 +61,13 @@ python3 sayo24.py read --device /dev/hidrawN
 
 ```sh
 # キーID 1のFn 0の割り当てをキーID 0へコピー
-python3 sayo24.py set --device /dev/hidrawN 0 --copy-from 1 --layer 0
+./osikiri set --device /dev/hidrawN 0 --copy-from 1 --layer 0
 
 # キーID 6のショートカットをプレビュー
-python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --dry-run
+./osikiri set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --dry-run
 
 # ショートカットを適用して本体に保存
-python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
+./osikiri set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
 ```
 
 `--shortcut` では英数字、F1〜F24、矢印キー、Enterなどの一般的なキーを指定できます。修飾キーにはCtrl、Shift、Alt、Gui（Windows / Command）を使います。右側の修飾キーには `RCtrl` のように `R` を付けます。
@@ -86,7 +86,7 @@ python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
 ## キー割り当てと照明を確認する
 
 ```sh
-python3 sayo24.py show --src original.sayobak
+./osikiri show --src original.sayobak
 ```
 
 公式ツールと同じキーID 0〜23、Fnレイヤー0〜4を表で表示します。CLIの引数とJSONのキーIDも同じ番号を使います。旧バージョンの引数を使う場合は、キー番号とレイヤー番号から1を引いてください。各行にはキー番号、割り当て（モードと4個のパラメーターを16進数で表示）、RGB色、点灯トリガーの数値が含まれます。公式ツールの Light Mode には Static や Breathing などの点灯効果があります。このCLIはトリガー値を表示し、常時点灯と押下時点灯の設定に対応します。
@@ -160,7 +160,7 @@ LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2�
 ## .sayobak 設定ファイルを編集する
 
 ```sh
-python3 sayo24.py set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest out
+./osikiri set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest out
 ```
 
 形式バージョン1.0の .sayobak サンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。`--dest` で出力先ディレクトリを指定できます。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
@@ -168,9 +168,9 @@ python3 sayo24.py set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest 
 ## 設定ファイルのRGB照明を設定する
 
 ```sh
-python3 sayo24.py read-light --src original.sayobak --layer 1
-python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dry-run
-python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dest out
+./osikiri read-light --src original.sayobak --layer 1
+./osikiri set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dry-run
+./osikiri set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dest out
 ```
 
 キーIDは0〜23で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドは設定ファイルをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
@@ -205,11 +205,11 @@ python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --
 ## 本体と設定ファイルを同期する
 
 ```sh
-python3 sayo24.py pull
-python3 sayo24.py pull /dev/hidrawN
-python3 sayo24.py pull --device /dev/hidrawN --dest out
-python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --dry-run
-python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --apply --save
+./osikiri pull
+./osikiri pull /dev/hidrawN
+./osikiri pull --device /dev/hidrawN --dest out
+./osikiri push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --dry-run
+./osikiri push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --apply --save
 ```
 
 `pull` は、HID Report ID `0x21` で全24キー・5つのFnレイヤーのキー割り当てとRGB照明を読み取ります。入力は本体だけです。 本体のパスを省略すると、接続中の対応機器をすべて読み取ります。HIDのパスを直接指定するか `--device` で指定すると、その1台だけを読み取ります。ファイルを出力する前に本体名とパスを表示します。 本体から別のHIDレポートが届いた場合は、要求したレコードと一致する応答を待ちます。生成する `.sayobak` には、Osikiriが読み取ったキー割り当てと照明のレコードだけが入ります。スクリプトやカラーテーブルは出力対象外です。このファイルの公式ツールでの取り込みは未確認です。`push` はバイナリファイルのキー割り当てと照明だけを適用し、変更したレコードを読み戻して確認します。`--save` を指定すると、成功した変更を本体の不揮発メモリーに保存します。途中で書き込みに失敗した場合、すでに書き込んだレコードが本体の動作中の設定に反映されることがあります。
@@ -219,8 +219,8 @@ python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-2
 ## テキストとバイナリを相互変換する
 
 ```sh
-python3 sayo24.py decode --src original.sayobak --dest out
-python3 sayo24.py encode --src out/2026-11-23-12-00-00.json --dest out
+./osikiri decode --src original.sayobak --dest out
+./osikiri encode --src out/2026-11-23-12-00-00.json --dest out
 ```
 
 `keys[].id` が、そのキーの全レイヤーに共通するIDです。`lighting` オブジェクトには `color` と `mode` が入ります。`keys[].layers[].binding` は `MODE:P0:P1:P2:P3` の16進形式で編集できます。RGBと点灯トリガーは `lighting.color` と `lighting.mode` で指定します。

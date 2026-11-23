@@ -450,16 +450,16 @@ def main(argv=None):
                         description="Show detected HID paths, USB IDs, and configuration report IDs.")
     commands.add_parser("read", help="Print bindings for all 24 keys as JSON",
                         description="Read bindings directly from a USB device.",
-                        epilog="Example: python3 sayo24.py read --device /dev/hidrawN")
+                        epilog="Example: ./osikiri read --device /dev/hidrawN")
     commands.add_parser(
         "show", help="Show key bindings and RGB lighting for every layer",
         description="Display the bindings and lighting in a .sayobak file.",
-        epilog="Example: python3 sayo24.py show --src settings.sayobak",
+        epilog="Example: ./osikiri show --src settings.sayobak",
     )
     pull = commands.add_parser(
         "pull", help="Read device bindings and lighting into a file pair",
         description="Read all connected compatible devices unless --device selects one.",
-        epilog="Example: python3 sayo24.py pull /dev/hidrawN",
+        epilog="Example: ./osikiri pull /dev/hidrawN",
     )
     pull.add_argument("device_path", nargs="?", type=Path, metavar="DEVICE",
                       help="Target /dev/hidrawN device")
@@ -476,12 +476,12 @@ def main(argv=None):
     read_light = commands.add_parser(
         "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
         description="Read lighting for one layer in a .sayobak file.",
-        epilog="Example: python3 sayo24.py read-light --src settings.sayobak --layer 1",
+        epilog="Example: ./osikiri read-light --src settings.sayobak --layer 1",
     )
     light = commands.add_parser(
         "set-light", help="Edit RGB lighting in the configuration file",
         description="Change lighting for one layer in a .sayobak file.",
-        epilog="Example: python3 sayo24.py set-light --src settings.sayobak all --color 00BFFF --dry-run",
+        epilog="Example: ./osikiri set-light --src settings.sayobak all --color 00BFFF --dry-run",
     )
     light.add_argument("key", choices=[str(key) for key in range(KEY_COUNT)] + ["all"],
                        metavar="KEY|all", help="Key ID (0-23), or all keys")
@@ -497,7 +497,7 @@ def main(argv=None):
     edit = commands.add_parser(
         "set", help="Edit the binding for one key on one layer",
         description="Edit a USB device or use --src to edit a .sayobak file.",
-        epilog="Example: python3 sayo24.py set --src settings.sayobak 6 --shortcut Ctrl+Shift+F13 --dry-run",
+        epilog="Example: ./osikiri set --src settings.sayobak 6 --shortcut Ctrl+Shift+F13 --dry-run",
     )
     edit.add_argument("key", type=int, choices=range(KEY_COUNT), metavar="KEY",
                       help="Key ID (0-23)")

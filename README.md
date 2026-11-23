@@ -20,9 +20,9 @@ Osikiri takes its name from the Japanese place name Oshikiri (押切) and also a
 Write the subcommand first, followed by its options. Use `--help` for a list of commands or place it after a command for its options.
 
 ```sh
-python3 sayo24.py --help
-python3 sayo24.py set --help
-python3 sayo24.py set-light --help
+./osikiri --help
+./osikiri set --help
+./osikiri set-light --help
 ```
 
 ## Connect over USB
@@ -30,8 +30,8 @@ python3 sayo24.py set-light --help
 USB access uses Linux `hidraw` and the legacy HID configuration protocol (Report ID `0x02`, Usage Page `0xFF00`). You need read/write access to the corresponding `/dev/hidrawN` node.
 
 ```sh
-python3 sayo24.py list
-python3 sayo24.py read --device /dev/hidrawN
+./osikiri list
+./osikiri read --device /dev/hidrawN
 ```
 
 Use the device path shown by `list`. You can omit `--device` if there is only one legacy configuration interface. For the `8089:0008` Left and Right units, select each device by its own path. Device numbers can change when you reconnect the units.
@@ -61,13 +61,13 @@ The output is a JSON array with one object per key. Here is one object from that
 
 ```sh
 # Copy the Fn 0 binding from key ID 1 to key ID 0
-python3 sayo24.py set --device /dev/hidrawN 0 --copy-from 1 --layer 0
+./osikiri set --device /dev/hidrawN 0 --copy-from 1 --layer 0
 
 # Preview a shortcut on key ID 6
-python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --dry-run
+./osikiri set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --dry-run
 
 # Apply the shortcut and save it to the device
-python3 sayo24.py set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
+./osikiri set --device /dev/hidrawN 6 --shortcut Ctrl+Shift+F13 --save
 ```
 
 `--shortcut` accepts letters, digits, F1–F24, arrow keys, and common keys such as Enter. Use Ctrl, Shift, Alt, or Gui (Windows / Command) as modifiers. Prefix a modifier with `R` for its right-hand counterpart, such as `RCtrl`.
@@ -86,7 +86,7 @@ Reading all 24 keys and five layers was verified on both `8089:0008` Left and Ri
 ## View key bindings and lighting
 
 ```sh
-python3 sayo24.py show --src original.sayobak
+./osikiri show --src original.sayobak
 ```
 
 The table shows key IDs 0–23 and Fn layers 0–4, matching the official configurator. CLI arguments and JSON key IDs use the same numbering. If you used an earlier release, subtract 1 from its key and layer arguments. Each row includes the key number, binding (mode and four hexadecimal parameter bytes), RGB color, and numeric lighting trigger. The official configurator lists effects such as Static and Breathing under Light Mode. The CLI reads the trigger value and supports continuous or press-triggered lighting settings.
@@ -160,7 +160,7 @@ On the Left unit, `Key ID 4` on Fn 0 has the binding `80:02:00:00:00`, which set
 ## Edit a .sayobak configuration file
 
 ```sh
-python3 sayo24.py set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest out
+./osikiri set --src original.sayobak 6 --shortcut Ctrl+Shift+F13 --dest out
 ```
 
 This works offline with the 24-key, five-layer layout verified in a sample .sayobak file (format 1.0). The output preserves all bytes outside the edited binding, including RGB settings. Use `--dest` to select the output directory. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
@@ -168,9 +168,9 @@ This works offline with the 24-key, five-layer layout verified in a sample .sayo
 ## Configure lighting in a .sayobak file
 
 ```sh
-python3 sayo24.py read-light --src original.sayobak --layer 1
-python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dry-run
-python3 sayo24.py set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dest out
+./osikiri read-light --src original.sayobak --layer 1
+./osikiri set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dry-run
+./osikiri set-light --src original.sayobak 6 --layer 1 --color FF6600 --mode static --dest out
 ```
 
 Use a key ID from 0 to 23 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the configuration file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
@@ -205,11 +205,11 @@ In the official configurator, **Light Mode** selects the lighting effect. The ta
 ## Synchronize the device and configuration files
 
 ```sh
-python3 sayo24.py pull
-python3 sayo24.py pull /dev/hidrawN
-python3 sayo24.py pull --device /dev/hidrawN --dest out
-python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --dry-run
-python3 sayo24.py push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --apply --save
+./osikiri pull
+./osikiri pull /dev/hidrawN
+./osikiri pull --device /dev/hidrawN --dest out
+./osikiri push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --dry-run
+./osikiri push --device /dev/hidrawN --src out/SayoDevice-Left-2026-11-23-12-00-00.sayobak --apply --save
 ```
 
 `pull` reads all 24 keys and five Fn layers, including RGB lighting, over HID Report ID `0x21`. The device is the sole input. With no device path, `pull` reads all connected compatible devices. To read a single device, pass its HID path directly or with `--device`. The command prints the device name and path before writing its files. Osikiri waits for a reply matching the requested record when the device sends unrelated HID reports. The generated `.sayobak` contains only the key bindings and lighting records read by Osikiri. Scripts and color tables are outside this export. Importing this partial file in the official configurator has yet to be verified. `push` applies only key bindings and lighting from the binary file, verifies each changed record, and optionally saves successful changes to nonvolatile memory. If a write fails partway through, the live settings may reflect the records written before the failure.
@@ -219,8 +219,8 @@ Whenever a command writes a binary `.sayobak` file, it also writes a same-name `
 ## Convert between text and binary
 
 ```sh
-python3 sayo24.py decode --src original.sayobak --dest out
-python3 sayo24.py encode --src out/2026-11-23-12-00-00.json --dest out
+./osikiri decode --src original.sayobak --dest out
+./osikiri encode --src out/2026-11-23-12-00-00.json --dest out
 ```
 
 Each `keys[].id` identifies the key for all its layers. Each `lighting` object contains only `color` and `mode`. Edit `keys[].layers[].binding` in `MODE:P0:P1:P2:P3` hexadecimal format and `lighting.color` or `lighting.mode` for RGB and trigger settings.
