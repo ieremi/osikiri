@@ -2,7 +2,7 @@
 
 [日本語](README-jp.md)
 
-A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` configuration file, and configures RGB lighting in configuration files. No additional Python packages are required.
+A Python 3 CLI for the 24-key SayoDevice. It reads and edits key bindings over USB or in a `.sayobak` configuration file, and configures RGB lighting in configuration files. No additional Python packages are required. CLI help and error messages are in English.
 
 ## Connect over USB
 

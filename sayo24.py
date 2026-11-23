@@ -70,20 +70,20 @@ class Device:
     def exchange(self, command, payload, timeout=1):
         frame = packet(command, payload)
         if os.write(self.fd, frame) != len(frame):
-            raise ValueError("HIDレポートを最後まで送信できませんでした。")
+            raise ValueError("Could not send the complete HID report.")
         deadline = time.monotonic() + timeout
         while select.select([self.fd], [], [], max(0, deadline - time.monotonic()))[0]:
             reply = os.read(self.fd, REPORT_SIZE)
             if not reply or reply[0] == REPORT_ID:
                 break
             if time.monotonic() >= deadline:
-                raise ValueError(f"コマンド 0x{command:02x} の応答がありません。")
+                raise ValueError(f"No response to command 0x{command:02x}.")
         else:
-            raise ValueError(f"コマンド 0x{command:02x} の応答がありません。")
+            raise ValueError(f"No response to command 0x{command:02x}.")
         if len(reply) != REPORT_SIZE or reply[2] > 60:
-            raise ValueError("応答のHIDレポート形式が一致しません。")
+            raise ValueError("Unexpected HID response format.")
         if reply[1]:
-            raise ValueError(f"コマンド 0x{command:02x} が拒否されました (0x{reply[1]:02x})。")
+            raise ValueError(f"Device rejected command 0x{command:02x} (status 0x{reply[1]:02x}).")
         return reply[3:3 + reply[2]]
 
     def read_key(self, index):
@@ -91,13 +91,13 @@ class Device:
         extra = len(payload) - HEADER_SIZE
         if (extra not in range(LAYER_SIZE, (MAX_LAYERS + 1) * LAYER_SIZE, LAYER_SIZE)
                 or payload[1] != index):
-            raise ValueError(f"キー {index + 1} の応答形式が一致しません。")
+            raise ValueError(f"Unexpected response format for key {index + 1}.")
         return payload
 
     def write_key(self, index, payload):
         self.exchange(KEY_MAP, bytes((1,)) + payload[1:])
         if self.read_key(index)[HEADER_SIZE:] != payload[HEADER_SIZE:]:
-            raise ValueError("書き込み後の読み戻しが一致しません。")
+            raise ValueError("The binding read back from the device differs from the requested binding.")
 
     def save(self):
         self.exchange(4, bytes.fromhex("72 96"), timeout=2)
@@ -108,29 +108,29 @@ class SayoFile:
         self.data = bytearray(path.read_bytes())
         end = len(self.data)
         if not self.data.startswith(SAYOBAK_MAGIC) or end < SAYOBAK_RECORD_START:
-            raise ValueError("対応する .sayobak 設定ファイル形式ではありません。")
+            raise ValueError("Unsupported .sayobak configuration file format.")
 
         self.keys = {}
         self.lights = {}
         offset = SAYOBAK_RECORD_START
         while offset < end:
             if end - offset < SAYOBAK_RECORD.size:
-                raise ValueError("設定ファイルのレコードヘッダーが途中で切れています。")
+                raise ValueError("The configuration file contains a truncated record header.")
             command, index, size = SAYOBAK_RECORD.unpack_from(self.data, offset)
             payload = offset + SAYOBAK_RECORD.size
             offset = payload + size
             if offset > end:
-                raise ValueError("設定ファイルのレコードが途中で切れています。")
+                raise ValueError("The configuration file contains a truncated record.")
             if command == SAYOBAK_KEY_COMMAND:
                 if index in self.keys or size != HEADER_SIZE + MAX_LAYERS * SAYOBAK_LAYER_SIZE:
-                    raise ValueError("設定ファイルのキー設定レコードが一致しません。")
+                    raise ValueError("Invalid key binding record in the configuration file.")
                 self.keys[index] = payload + HEADER_SIZE
             elif command == SAYOBAK_LIGHT_COMMAND:
                 if index in self.lights or size != 56:
-                    raise ValueError("設定ファイルの照明レコードが一致しません。")
+                    raise ValueError("Invalid lighting record in the configuration file.")
                 self.lights[index] = payload
         if self.keys.keys() != set(range(KEY_COUNT)):
-            raise ValueError("設定ファイルに24キー分の設定がありません。")
+            raise ValueError("The configuration file must contain bindings for all 24 keys.")
 
     def read_key(self, index):
         # Convert to the CLI's legacy key layout. The file stores three
@@ -158,7 +158,7 @@ class SayoFile:
 
     def lighting(self, indices, layer, color=None, mode=None):
         if any(index not in self.lights for index in indices):
-            raise ValueError("指定したキーの照明レコードがありません。")
+            raise ValueError("No lighting record for one or more selected keys.")
         result = []
         for index in indices:
             payload = self.lights[index] + (layer - 1) * SAYOBAK_LAYER_SIZE
@@ -184,7 +184,7 @@ def open_device(path):
         and b"\x85\x02" in desc and (path is None or path == node)
     ]
     if len(candidates) != 1:
-        raise ValueError("対象の旧HID設定インターフェースを1つ選べません。list で確認してください。")
+        raise ValueError("Could not select a single legacy HID configuration interface. Run list to see available devices.")
     fd = os.open(candidates[0], os.O_RDWR | os.O_NONBLOCK)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -196,7 +196,7 @@ def open_device(path):
 def layer_offset(payload, layer):
     offset = HEADER_SIZE + (layer - 1) * LAYER_SIZE
     if offset + LAYER_SIZE > len(payload):
-        raise ValueError(f"指定したレイヤー {layer} はこのキーにありません。")
+        raise ValueError(f"Layer {layer} is unavailable for this key.")
     return offset
 
 
@@ -222,7 +222,7 @@ def parse_binding(value):
             return result
     except ValueError:
         pass
-    raise argparse.ArgumentTypeError("5つの16進バイトを : で区切ってください。")
+    raise argparse.ArgumentTypeError("Enter five hexadecimal bytes separated by colons.")
 
 
 def parse_shortcut(value):
@@ -231,58 +231,58 @@ def parse_shortcut(value):
         mask = sum(MODIFIERS[modifier] for modifier in set(modifiers))
         return bytes((0, mask, KEY_CODES[key], 0, 0))
     except KeyError as exc:
-        raise argparse.ArgumentTypeError(f"未対応のキー名: {exc.args[0]}") from exc
+        raise argparse.ArgumentTypeError(f"Unsupported key name: {exc.args[0]}") from exc
 
 
 def parse_color(value):
     if not re.fullmatch(r"#?[0-9a-fA-F]{6}", value):
-        raise argparse.ArgumentTypeError("色を RRGGBB 形式で指定してください。")
+        raise argparse.ArgumentTypeError("Enter a color in RRGGBB format.")
     return bytes.fromhex(value.removeprefix("#"))
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     target = parser.add_mutually_exclusive_group()
-    target.add_argument("--device", type=Path, help="対象の /dev/hidrawN")
-    target.add_argument("--src", type=Path, help="入力の .sayobak ファイル")
+    target.add_argument("--device", type=Path, help="Target /dev/hidrawN device")
+    target.add_argument("--src", type=Path, help="Input .sayobak configuration file")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("list", help="SayoDeviceのHID一覧")
-    commands.add_parser("read", help="24キー分の割り当てをJSONで表示")
-    read_light = commands.add_parser("read-light", help="設定ファイルの24キー分のRGB照明を表示")
-    light = commands.add_parser("set-light", help="設定ファイルのRGB照明を変更")
+    commands.add_parser("list", help="List SayoDevice HID interfaces")
+    commands.add_parser("read", help="Print bindings for all 24 keys as JSON")
+    read_light = commands.add_parser("read-light", help="Show RGB lighting for all 24 keys in the configuration file")
+    light = commands.add_parser("set-light", help="Edit RGB lighting in the configuration file")
     light.add_argument("key", choices=[str(key) for key in range(1, KEY_COUNT + 1)] + ["all"],
                        metavar="KEY|all")
     light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB")
-    light.add_argument("--mode", choices=("static", "held"), help="常時点灯または押下時点灯")
+    light.add_argument("--mode", choices=("static", "held"), help="Light continuously or only while pressed")
     for lighting_command in (read_light, light):
         lighting_command.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1),
-                                      default=1, help="照明レイヤー (既定: 1)")
+                                      default=1, help="Lighting layer (default: 1)")
     light_destination = light.add_mutually_exclusive_group(required=True)
-    light_destination.add_argument("--dest", type=Path, help="新規 .sayobak ファイルの出力先")
-    light_destination.add_argument("--dry-run", action="store_true", help="変更後の照明を表示")
-    edit = commands.add_parser("set", help="1キーの1レイヤーを変更")
+    light_destination.add_argument("--dest", type=Path, help="Path for the new .sayobak file")
+    light_destination.add_argument("--dry-run", action="store_true", help="Preview the lighting changes")
+    edit = commands.add_parser("set", help="Edit the binding for one key on one layer")
     edit.add_argument("key", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY")
     edit.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1), default=1)
     source = edit.add_mutually_exclusive_group(required=True)
     source.add_argument("--copy-from", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY")
     source.add_argument("--binding", type=parse_binding, metavar="MODE:P0:P1:P2:P3")
     source.add_argument("--shortcut", type=parse_shortcut, metavar="CTRL+SHIFT+F13")
-    edit.add_argument("--dry-run", action="store_true", help="変更後の割り当てを表示")
+    edit.add_argument("--dry-run", action="store_true", help="Preview the binding change")
     destination = edit.add_mutually_exclusive_group()
-    destination.add_argument("--save", action="store_true", help="本体の不揮発メモリーに保存")
-    destination.add_argument("--dest", type=Path, help="新規 .sayobak ファイルの出力先")
+    destination.add_argument("--save", action="store_true", help="Save to the device nonvolatile memory")
+    destination.add_argument("--dest", type=Path, help="Path for the new .sayobak file")
     args = parser.parse_args(argv)
     if args.command == "list" and args.src:
-        parser.error("list に --src は指定できません。")
+        parser.error("list does not accept --src.")
     if args.command in ("read-light", "set-light") and not args.src:
-        parser.error("照明コマンドには --src が必要です。")
+        parser.error("Lighting commands require --src.")
     if args.command == "set":
         if args.dry_run and (args.save or args.dest):
-            parser.error("--dry-run と --save / --dest は同時に指定できません。")
+            parser.error("--dry-run cannot be combined with --save or --dest.")
         if args.src and (args.save or not (args.dry_run or args.dest)):
-            parser.error("--src での set には --dest または --dry-run を指定してください。")
+            parser.error("set with --src requires either --dest or --dry-run.")
         if args.dest and not args.src:
-            parser.error("--dest には --src が必要です。")
+            parser.error("--dest requires --src.")
 
     try:
         if args.command == "read-light":
@@ -328,7 +328,7 @@ def main(argv=None):
             print(json.dumps(describe(updated)))
         return 0
     except (OSError, ValueError) as exc:
-        print(f"エラー: {exc}", file=sys.stderr)
+        print(f"Error: {exc}", file=sys.stderr)
         return 1
 
 
