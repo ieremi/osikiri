@@ -32,19 +32,19 @@ python3 sayo24.py --device /dev/hidrawN read
 ## キー割り当てを変更する
 
 ```sh
-# キー2のレイヤー1の割り当てをキー1へコピー
-python3 sayo24.py --device /dev/hidrawN set 1 --copy-from 2 --layer 1
+# キーID 1のFn 0の割り当てをキーID 0へコピー
+python3 sayo24.py --device /dev/hidrawN set 0 --copy-from 1 --layer 0
 
-# キー7のショートカットをプレビュー
-python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --dry-run
+# キーID 6のショートカットをプレビュー
+python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --dry-run
 
 # ショートカットを適用して本体に保存
-python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --save
+python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --save
 ```
 
 `--shortcut` では英数字、F1〜F24、矢印キー、Enterなどの一般的なキーを指定できます。修飾キーにはCtrl、Shift、Alt、Gui（Windows / Command）を使います。右側の修飾キーには `RCtrl` のように `R` を付けます。
 
-`read` は各レイヤーのモード1バイトとパラメーター4バイトを10進数で表示します。既知の割り当てを直接入力するには、`set 1 --binding MODE:P0:P1:P2:P3` に16進数のバイト値を指定します。値の意味はファームウェアに依存します。
+`read` は各レイヤーのモード1バイトとパラメーター4バイトを10進数で表示します。既知の割り当てを直接入力するには、`set 0 --binding MODE:P0:P1:P2:P3` に16進数のバイト値を指定します。値の意味はファームウェアに依存します。
 
 ツールは編集前に全24キーを読み取ります。変更を書き込んだ場合は、対象キーの設定を読み戻して結果を確認してから `--save` を実行します。保存すると、本体の現在の設定が不揮発メモリーに記録されます。
 
@@ -61,30 +61,30 @@ python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --save
 python3 sayo24.py --src original.sayobak show
 ```
 
-全24キー・全5レイヤーを表で表示します。各行にはキー番号、割り当て（モードと4個のパラメーターを16進数で表示）、RGB色、点灯トリガーの数値が含まれます。公式ツールの Light Mode には Static や Breathing などの点灯効果があります。このCLIはトリガー値を表示し、常時点灯と押下時点灯の設定に対応します。
+公式ツールと同じキーID 0〜23、Fnレイヤー0〜4を表で表示します。CLIの引数とJSONのキーIDも同じ番号を使います。旧バージョンの引数を使う場合は、キー番号とレイヤー番号から1を引いてください。各行にはキー番号、割り当て（モードと4個のパラメーターを16進数で表示）、RGB色、点灯トリガーの数値が含まれます。公式ツールの Light Mode には Static や Breathing などの点灯効果があります。このCLIはトリガー値を表示し、常時点灯と押下時点灯の設定に対応します。
 
 ### 物理キーの配置（Left）
 
-公式ツールでUSBアイコンが右にある向きのLeftの配置です。数字は `show` の `Key` 番号です。
+公式ツールでUSBアイコンが右にある向きのLeftの配置です。数字は `show` と公式ツールで共通の `Key ID` です。
 
 ```text
- 24   17   16    9    8    1
- 23   18   15   10    7    2
- 22   19   14   11    6    3     USB →
- 21   20   13   12    5    4
+ 23   16   15    8    7    0
+ 22   17   14    9    6    1
+ 21   18   13   10    5    2     USB →
+ 20   19   12   11    4    3
 ```
 
-右下は `Key 4`、その左隣は `Key 5` です。公式ツールは0から数えるため、同じ位置はそれぞれ `Key ID 3` と `Key ID 4` になります。
+右下は `Key ID 3`、その左隣は `Key ID 4` です。
 
 ### 物理キーの配置（Right）
 
-USBコネクタが左にある向きのRightの配置です。数字は `show` の `Key` 番号です。1を引くと、公式ツールの `Key ID` になります。
+USBコネクタが左にある向きのRightの配置です。数字は `show` と公式ツールで共通の `Key ID` です。
 
 ```text
-         4    5   12   13   20   21
-← USB    3    6   11   14   19   22
-         2    7   10   15   18   23
-         1    8    9   16   17   24
+         3    4   11   12   19   20
+← USB    2    5   10   13   18   21
+         1    6    9   14   17   22
+         0    7    8   15   16   23
 ```
 
 ### Binding (hex) の読み方
@@ -127,13 +127,13 @@ Binding（バインディング）は、キーに割り当てられた動作で�
 | SW Layer Switching (Set Fn Layer) | `128` / `80` | 押すとレイヤーが切り替わり、離してもそのレイヤーを維持します。 |
 | Bluetooth Device Switching | 未確認 | Bluetooth接続先を切り替えます。 |
 
-照合した24キーのLeft設定では、公式ツールのキーIDとFnレイヤーは0から、Osikiriの表示は1から数えます。そのため、公式ツールの `Fn 0` の `Key ID 4` は、`show` では `Layer 1` の `Key 5` です。割り当ての `80:02:00:00:00` は、公式ツールの **Set Fn Layer** で切り替え先に `fn 2` を指定した設定と一致します。切り替え先も0始まりなので、`fn 2` はOsikiriのレイヤー3です。
+LeftのFn 0にある `Key ID 4` の割り当ては `80:02:00:00:00` で、Fn 2に切り替えます。
 
 ## .sayobak 設定ファイルを編集する
 
 ```sh
 python3 sayo24.py --src original.sayobak read
-python3 sayo24.py --src original.sayobak set 7 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
+python3 sayo24.py --src original.sayobak set 6 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
 ```
 
 形式バージョン1.0の .sayobak サンプルで確認した24キー・5レイヤーの形式をオフラインで編集できます。出力ではRGB設定を含め、編集したキー割り当て以外のバイトがすべて保持されます。出力先には新規ファイルのパスを指定してください。`--copy-from`、`--binding`、`--dry-run` も同様に使えます。公式ツールでの編集済みファイルの取り込みは未確認です。
@@ -144,7 +144,7 @@ python3 sayo24.py --src original.sayobak set 7 --shortcut Ctrl+Shift+F13 --dest 
 
 ```json
 {
-  "key": 7,
+  "key": 6,
   "layers": [
     [0, 3, 104, 0, 0],
     [0, 0, 28, 0, 0],
@@ -155,19 +155,19 @@ python3 sayo24.py --src original.sayobak set 7 --shortcut Ctrl+Shift+F13 --dest 
 }
 ```
 
-`key` は本体のキー番号です。`layers` はレイヤー1から順に並ぶため、`layers[0]` がレイヤー1です。各要素には `[MODE, P0, P1, P2, P3]` が10進数で入ります。この例ではレイヤー1がCtrl+Shift+F13、レイヤー2がYです。10進数の `104` と `28` は、`show` の表では16進数の `68` と `1C` に当たります。
+`key` は本体のキー番号です。`layers` はFn 0から順に並ぶため、`layers[0]` がFn 0です。各要素には `[MODE, P0, P1, P2, P3]` が10進数で入ります。この例ではFn 0がCtrl+Shift+F13、Fn 1がYです。10進数の `104` と `28` は、`show` の表では16進数の `68` と `1C` に当たります。
 
 ## 設定ファイルのRGB照明を設定する
 
 ```sh
-python3 sayo24.py --src original.sayobak read-light --layer 2
-python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
-python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dest edited.sayobak
+python3 sayo24.py --src original.sayobak read-light --layer 1
+python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dry-run
+python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dest edited.sayobak
 ```
 
-キー番号は1〜24で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドは設定ファイルをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
+キーIDは0〜23で、全キーをまとめて変更するには `all` を指定します。色は6桁の16進RGBで指定します。`--mode static` は常時点灯、`--mode held` は押している間の点灯です。`--mode` を省略すると現在のモードを維持します。照明コマンドは設定ファイルをオフラインで編集します。編集済みファイルの復元と実機での点灯は未確認です。
 
-どちらのコマンドでも `--layer 1` から `--layer 5` で設定ファイルの照明スロットを指定できます。省略時はレイヤー1です。レイヤー2〜5の実機での動作は未確認です。
+どちらのコマンドでも `--layer 0` から `--layer 4` で設定ファイルの照明スロットを指定できます。省略時はFn 0です。Fn 1〜4の実機での動作は未確認です。
 
 ### Light Modeと点灯トリガーの値
 

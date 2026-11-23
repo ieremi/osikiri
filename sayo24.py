@@ -91,7 +91,7 @@ class Device:
         extra = len(payload) - HEADER_SIZE
         if (extra not in range(LAYER_SIZE, (MAX_LAYERS + 1) * LAYER_SIZE, LAYER_SIZE)
                 or payload[1] != index):
-            raise ValueError(f"Unexpected response format for key {index + 1}.")
+            raise ValueError(f"Unexpected response format for key {index}.")
         return payload
 
     def write_key(self, index, payload):
@@ -144,8 +144,8 @@ class SayoFile:
         return bytes(payload)
 
     def write_key(self, index, payload):
-        for layer in range(1, MAX_LAYERS + 1):
-            offset = self.keys[index] + (layer - 1) * SAYOBAK_LAYER_SIZE
+        for layer in range(MAX_LAYERS):
+            offset = self.keys[index] + layer * SAYOBAK_LAYER_SIZE
             values = binding(payload, layer)
             self.data[offset] = values[0]
             self.data[offset + 4:offset + 8] = values[1:]
@@ -161,7 +161,7 @@ class SayoFile:
             raise ValueError("No lighting record for one or more selected keys.")
         result = []
         for index in indices:
-            payload = self.lights[index] + (layer - 1) * SAYOBAK_LAYER_SIZE
+            payload = self.lights[index] + layer * SAYOBAK_LAYER_SIZE
             rgb = payload + SAYOBAK_LIGHT_RGB_OFFSET
             mode_offset = payload + SAYOBAK_LIGHT_MODE_OFFSET
             if color is not None:
@@ -169,7 +169,7 @@ class SayoFile:
             if mode is not None:
                 self.data[mode_offset] = mode
             result.append({
-                "key": index + 1,
+                "key": index,
                 "color": "#" + self.data[rgb:rgb + 3].hex(),
                 "mode": self.data[mode_offset],
             })
@@ -194,8 +194,8 @@ def open_device(path):
 
 
 def layer_offset(payload, layer):
-    offset = HEADER_SIZE + (layer - 1) * LAYER_SIZE
-    if offset + LAYER_SIZE > len(payload):
+    offset = HEADER_SIZE + layer * LAYER_SIZE
+    if layer < 0 or offset + LAYER_SIZE > len(payload):
         raise ValueError(f"Layer {layer} is unavailable for this key.")
     return offset
 
@@ -207,10 +207,10 @@ def binding(payload, layer):
 
 def describe(payload):
     return {
-        "key": payload[1] + 1,
+        "key": payload[1],
         "layers": [
             list(binding(payload, layer))
-            for layer in range(1, (len(payload) - HEADER_SIZE) // LAYER_SIZE + 1)
+            for layer in range((len(payload) - HEADER_SIZE) // LAYER_SIZE)
         ],
     }
 
@@ -259,35 +259,35 @@ def main(argv=None):
     read_light = commands.add_parser(
         "read-light", help="Show RGB lighting for all 24 keys in the configuration file",
         description="Read lighting for one layer. Put --src before read-light.",
-        epilog="Example: python3 sayo24.py --src settings.sayobak read-light --layer 2",
+        epilog="Example: python3 sayo24.py --src settings.sayobak read-light --layer 1",
     )
     light = commands.add_parser(
         "set-light", help="Edit RGB lighting in the configuration file",
         description="Change lighting for one layer. Put --src before set-light.",
         epilog="Example: python3 sayo24.py --src settings.sayobak set-light all --color 00BFFF --dry-run",
     )
-    light.add_argument("key", choices=[str(key) for key in range(1, KEY_COUNT + 1)] + ["all"],
-                       metavar="KEY|all", help="Key number (1-24), or all keys")
+    light.add_argument("key", choices=[str(key) for key in range(KEY_COUNT)] + ["all"],
+                       metavar="KEY|all", help="Key ID (0-23), or all keys")
     light.add_argument("--color", type=parse_color, required=True, metavar="RRGGBB",
                        help="Six hexadecimal RGB digits, optionally prefixed with #")
     light.add_argument("--mode", choices=("static", "held"), help="Light continuously or only while pressed")
     for lighting_command in (read_light, light):
-        lighting_command.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1),
-                                      default=1, help="Lighting layer (default: 1)")
+        lighting_command.add_argument("--layer", type=int, choices=range(MAX_LAYERS),
+                                      default=0, help="Lighting layer (default: 0)")
     light_destination = light.add_mutually_exclusive_group(required=True)
     light_destination.add_argument("--dest", type=Path, help="Path for the new .sayobak file")
     light_destination.add_argument("--dry-run", action="store_true", help="Preview the lighting changes")
     edit = commands.add_parser(
         "set", help="Edit the binding for one key on one layer",
         description="Edit a USB device or use --src before set to edit a .sayobak file.",
-        epilog="Example: python3 sayo24.py --src settings.sayobak set 7 --shortcut Ctrl+Shift+F13 --dry-run",
+        epilog="Example: python3 sayo24.py --src settings.sayobak set 6 --shortcut Ctrl+Shift+F13 --dry-run",
     )
-    edit.add_argument("key", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY",
-                      help="Key number (1-24)")
-    edit.add_argument("--layer", type=int, choices=range(1, MAX_LAYERS + 1), default=1,
-                      help="Binding layer (default: 1)")
+    edit.add_argument("key", type=int, choices=range(KEY_COUNT), metavar="KEY",
+                      help="Key ID (0-23)")
+    edit.add_argument("--layer", type=int, choices=range(MAX_LAYERS), default=0,
+                      help="Binding layer (default: 0)")
     source = edit.add_mutually_exclusive_group(required=True)
-    source.add_argument("--copy-from", type=int, choices=range(1, KEY_COUNT + 1), metavar="KEY",
+    source.add_argument("--copy-from", type=int, choices=range(KEY_COUNT), metavar="KEY",
                         help="Copy another key's binding from the selected layer")
     source.add_argument("--binding", type=parse_binding, metavar="MODE:P0:P1:P2:P3",
                         help="Enter the binding as five hexadecimal bytes")
@@ -317,13 +317,13 @@ def main(argv=None):
             settings = SayoFile(args.src)
             indices = range(KEY_COUNT)
             keys = [settings.read_key(index) for index in indices]
-            rows = ["Layer  Key  Binding (hex)   RGB      Light trigger"]
-            for layer in range(1, MAX_LAYERS + 1):
+            rows = ["Layer  Key ID  Binding (hex)   RGB      Light trigger"]
+            for layer in range(MAX_LAYERS):
                 lights = settings.lighting(indices, layer)
                 for key, light in zip(keys, lights):
                     values = binding(key, layer).hex(":").upper()
                     rows.append(
-                        f"{layer:>5}  {light['key']:>3}  {values}  "
+                        f"{layer:>5}  {light['key']:>6}  {values}  "
                         f"{light['color'].upper()}  {light['mode']:>13}"
                     )
             print("\n".join(rows))
@@ -333,7 +333,7 @@ def main(argv=None):
             return 0
         if args.command == "set-light":
             settings = SayoFile(args.src)
-            indices = range(KEY_COUNT) if args.key == "all" else [int(args.key) - 1]
+            indices = range(KEY_COUNT) if args.key == "all" else [int(args.key)]
             mode = {"static": 0, "held": 1}.get(args.mode)
             result = settings.lighting(indices, args.layer, args.color, mode)
             if args.dest:
@@ -353,12 +353,12 @@ def main(argv=None):
                 print(json.dumps([describe(key) for key in keys], indent=2))
                 return 0
 
-            index = args.key - 1
+            index = args.key
             current = keys[index]
             offset = layer_offset(current, args.layer)
             new_binding = args.binding or args.shortcut
             if args.copy_from is not None:
-                new_binding = binding(keys[args.copy_from - 1], args.layer)
+                new_binding = binding(keys[args.copy_from], args.layer)
             updated = bytearray(current)
             updated[offset] = new_binding[0]
             updated[offset + 2:offset + LAYER_SIZE] = new_binding[1:]

@@ -32,19 +32,19 @@ The `read` command lists all 24 keys in device-number order. The mapping from ke
 ## Change a key binding
 
 ```sh
-# Copy the layer 1 binding from key 2 to key 1
-python3 sayo24.py --device /dev/hidrawN set 1 --copy-from 2 --layer 1
+# Copy the Fn 0 binding from key ID 1 to key ID 0
+python3 sayo24.py --device /dev/hidrawN set 0 --copy-from 1 --layer 0
 
-# Preview a shortcut on key 7
-python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --dry-run
+# Preview a shortcut on key ID 6
+python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --dry-run
 
 # Apply the shortcut and save it to the device
-python3 sayo24.py --device /dev/hidrawN set 7 --shortcut Ctrl+Shift+F13 --save
+python3 sayo24.py --device /dev/hidrawN set 6 --shortcut Ctrl+Shift+F13 --save
 ```
 
 `--shortcut` accepts letters, digits, F1–F24, arrow keys, and common keys such as Enter. Use Ctrl, Shift, Alt, or Gui (Windows / Command) as modifiers. Prefix a modifier with `R` for its right-hand counterpart, such as `RCtrl`.
 
-The `read` command displays each layer as a mode byte followed by four parameter bytes in decimal. To enter a known binding directly, use `set 1 --binding MODE:P0:P1:P2:P3` with hexadecimal bytes. Their meaning depends on the firmware.
+The `read` command displays each layer as a mode byte followed by four parameter bytes in decimal. To enter a known binding directly, use `set 0 --binding MODE:P0:P1:P2:P3` with hexadecimal bytes. Their meaning depends on the firmware.
 
 The tool reads all 24 keys before editing. When it writes a change, it reads the key back and checks the result before running `--save`. Saving commits the device’s current configuration to nonvolatile memory.
 
@@ -61,30 +61,30 @@ Reading all 24 keys and five layers was verified on both `8089:0008` Left and Ri
 python3 sayo24.py --src original.sayobak show
 ```
 
-The table shows all 24 keys across all five layers. Each row includes the key number, binding (mode and four hexadecimal parameter bytes), RGB color, and numeric lighting trigger. The official configurator lists effects such as Static and Breathing under Light Mode. The CLI reads the trigger value and supports continuous or press-triggered lighting settings.
+The table shows key IDs 0–23 and Fn layers 0–4, matching the official configurator. CLI arguments and JSON key IDs use the same numbering. If you used an earlier release, subtract 1 from its key and layer arguments. Each row includes the key number, binding (mode and four hexadecimal parameter bytes), RGB color, and numeric lighting trigger. The official configurator lists effects such as Static and Breathing under Light Mode. The CLI reads the trigger value and supports continuous or press-triggered lighting settings.
 
 ### Physical key layout (Left)
 
-This is the Left unit as shown in the official configurator with the USB icon on the right. The numbers are the `Key` values in `show`.
+This is the Left unit as shown in the official configurator with the USB icon on the right. The numbers match the `Key ID` values in both `show` and the official configurator.
 
 ```text
- 24   17   16    9    8    1
- 23   18   15   10    7    2
- 22   19   14   11    6    3     USB →
- 21   20   13   12    5    4
+ 23   16   15    8    7    0
+ 22   17   14    9    6    1
+ 21   18   13   10    5    2     USB →
+ 20   19   12   11    4    3
 ```
 
-The bottom-right key is `Key 4`, and its immediate left neighbor is `Key 5`. The official configurator starts counting at 0, so those positions are `Key ID 3` and `Key ID 4`, respectively.
+The bottom-right key is `Key ID 3`, and its immediate left neighbor is `Key ID 4`.
 
 ### Physical key layout (Right)
 
-This is the Right unit with the USB connector on the left. The numbers are the `Key` values in `show`. In the official configurator, subtract 1 to get the corresponding `Key ID`.
+This is the Right unit with the USB connector on the left. The numbers match the `Key ID` values in both `show` and the official configurator.
 
 ```text
-         4    5   12   13   20   21
-← USB    3    6   11   14   19   22
-         2    7   10   15   18   23
-         1    8    9   16   17   24
+         3    4   11   12   19   20
+← USB    2    5   10   13   18   21
+         1    6    9   14   17   22
+         0    7    8   15   16   23
 ```
 
 ### How to read Binding (hex)
@@ -127,13 +127,13 @@ For other modes, the meaning of the four parameters depends on the mode.
 | SW Layer Switching (Set Fn Layer) | `128` / `80` | Switches layers on press and keeps the selected layer. |
 | Bluetooth Device Switching | Unverified | Selects a Bluetooth device. |
 
-On the verified 24-key Left configuration, the official configurator labels keys and layers from 0, while Osikiri starts at 1. The configurator’s `Key ID 4` on `Fn 0` is therefore `Key 5` on `Layer 1` in `show`. Its binding is `80:02:00:00:00`, matching the configurator’s **Set Fn Layer** target `fn 2`. The target uses the configurator’s zero-based numbering, so `fn 2` corresponds to Osikiri layer 3.
+On the Left unit, `Key ID 4` on Fn 0 has the binding `80:02:00:00:00`, which sets the active layer to Fn 2.
 
 ## Edit a .sayobak configuration file
 
 ```sh
 python3 sayo24.py --src original.sayobak read
-python3 sayo24.py --src original.sayobak set 7 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
+python3 sayo24.py --src original.sayobak set 6 --shortcut Ctrl+Shift+F13 --dest edited.sayobak
 ```
 
 This works offline with the 24-key, five-layer layout verified in a sample .sayobak file (format 1.0). The output preserves all bytes outside the edited binding, including RGB settings. Use a new output path. The same `--copy-from`, `--binding`, and `--dry-run` options are available. Importing the edited file with the official configurator has yet to be verified.
@@ -144,7 +144,7 @@ The output is a JSON array with one object per key. Here is one object from that
 
 ```json
 {
-  "key": 7,
+  "key": 6,
   "layers": [
     [0, 3, 104, 0, 0],
     [0, 0, 28, 0, 0],
@@ -155,19 +155,19 @@ The output is a JSON array with one object per key. Here is one object from that
 }
 ```
 
-`key` is the device key number. The entries in `layers` are ordered from layer 1 onward, so `layers[0]` is layer 1. Each entry contains `[MODE, P0, P1, P2, P3]` in decimal. In this example, layer 1 is Ctrl+Shift+F13 and layer 2 is Y. The decimal values `104` and `28` correspond to hexadecimal `68` and `1C` in the `show` table.
+`key` is the device key number. The entries in `layers` are indexed by Fn layer, so `layers[0]` is Fn 0. Each entry contains `[MODE, P0, P1, P2, P3]` in decimal. In this example, Fn 0 is Ctrl+Shift+F13 and Fn 1 is Y. The decimal values `104` and `28` correspond to hexadecimal `68` and `1C` in the `show` table.
 
 ## Configure lighting in a .sayobak file
 
 ```sh
-python3 sayo24.py --src original.sayobak read-light --layer 2
-python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dry-run
-python3 sayo24.py --src original.sayobak set-light 7 --layer 2 --color FF6600 --mode static --dest edited.sayobak
+python3 sayo24.py --src original.sayobak read-light --layer 1
+python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dry-run
+python3 sayo24.py --src original.sayobak set-light 6 --layer 1 --color FF6600 --mode static --dest edited.sayobak
 ```
 
-Use a key number from 1 to 24 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the configuration file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
+Use a key ID from 0 to 23 or `all`. Colors use six hexadecimal RGB digits. Use `--mode static` for continuous lighting or `--mode held` for lighting while pressed. Omit `--mode` to keep the current mode. These commands edit the configuration file offline. Restoring the edited file and checking the LEDs on hardware remain unverified.
 
-Use `--layer 1` through `--layer 5` to select a lighting slot in the file for either command. Both commands default to layer 1. On-device behavior for layers 2–5 has yet to be verified.
+Use `--layer 0` through `--layer 4` to select a lighting slot in the file for either command. Both commands default to Fn 0. On-device behavior for Fn 1–4 has yet to be verified.
 
 ### Light Mode and trigger values
 
